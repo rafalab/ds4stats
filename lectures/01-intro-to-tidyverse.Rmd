@@ -1,0 +1,378 @@
+---
+title: "Data Science for Statisticians: Introduction to the tidyverse"
+author: "Rafael A. Irizarry"
+date: "3/13/2019"
+output: 
+  ioslides_presentation: 
+    fig_caption: no
+    fig_height: 4
+    fig_width: 7
+    beamer_presentation: default
+  slidy_presentation: default
+---
+
+## The tidyverse
+
+A collection of packages particularly helpful for working with tables.
+
+
+- __dplyr__ - manipulating data frames 
+- __ggplot2__ - data visualization
+- __readr__ - importing data
+- __stringr__ - string manipulation
+- __lubridate__ - dates and times
+- __purrr__ package for working with functions
+
+
+## The tidyverse
+
+Load the main packages like this:
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+
+## Tidy data 
+
+- Each row represents one observation 
+- Columns represent the different variables 
+
+
+## Tidy data 
+
+The `murders` dataset is an example of a tidy data frame.
+
+```{r}
+library(dslabs)
+data(murders)
+head(murders)
+```
+
+## Wide data
+
+This is not tidy:
+
+```{r,  echo = FALSE, message=FALSE}
+path <- system.file("extdata", package="dslabs")
+filename <- file.path(path, "fertility-two-countries-example.csv")
+wide_data <- read_csv(filename)
+select(wide_data, country, `1960`:`1965`) %>% as.data.frame
+```
+
+Later we learn how to _wrangle_ into tidy format.
+
+## Tidy data
+
+Same information in tidy format. 
+
+```{r, echo=FALSE}
+library(dslabs)
+data("gapminder")
+tidy_data <- gapminder %>% 
+  filter(country %in% c("South Korea", "Germany") & !is.na(fertility)) %>%
+  select(country, year, fertility)
+head(tidy_data, 12)
+```
+
+
+## Manipulating data frames with dplyr
+
+- `mutate` - change or add columns   
+- `filter`-  filter rows based on a rule
+- `select` - Subset the data by selecting specific columns
+
+## Adding a column with `mutate`
+
+
+```{r, message=FALSE}
+data("murders")
+murders <- mutate(murders, rate = total / population * 100000)
+```
+
+Notice that here we used `total` and `population` inside the function, which are objects that are **not** defined in our workspace. 
+
+## Adding a column with `mutate`
+
+We can see the new column now
+
+```{r}
+head(murders)
+```
+
+
+## Subsetting with `filter`
+
+```{r}
+filter(murders, rate <= 0.71)
+```
+
+
+## Selecting columns with `select`
+
+```{r}
+new_table <- select(murders, state, region, rate)
+filter(new_table, rate <= 0.71)
+```
+
+## The pipe: `%>%`
+
+$$ \mbox{original data }
+\rightarrow \mbox{ select }
+\rightarrow \mbox{ filter } $$
+
+
+## The pipe: `%>%`
+
+
+When using the pipe, functions take left hand side as first argumemt:
+
+```{r}
+murders %>% select(state, region, rate) %>% filter(rate <= 0.71)
+```
+
+## More pipe example
+
+
+```{r}
+sqrt(16)
+16 %>% sqrt()
+```
+
+```{r}
+log2(sqrt(16))
+16 %>% sqrt() %>% log2()
+```
+
+## Example: Use arguments with pipe
+```{r}
+16 %>% sqrt() %>% log(base = 2)
+```
+
+
+## Pipe example
+
+```{r, eval=FALSE}
+murders %>% 
+  select(state, region, rate) %>% 
+  filter(rate <= 0.71)
+```
+
+## Summarizing data
+
+Summarizing variables is very common operation.
+
+Average female heights:
+
+```{r}
+data(heights)
+s <- heights %>% 
+  filter(sex == "Female") %>%
+  summarize(average = mean(height))
+```
+
+
+## Tidyverse always returns tables
+
+```{r}
+s$average
+```
+
+## Summarizing data
+
+You can compute more than one summary
+
+```{r}
+data(heights)
+heights %>% 
+  filter(sex == "Female") %>%
+  summarize(median = median(height), 
+            q25 = quantile(height, .25),
+            q75 = quantile(height, .75))
+```
+
+
+## Summarize only wors with one variable summaries
+
+You can compute more than one summary
+
+```{r, eval=FALSE}
+data(heights)
+heights %>% 
+  filter(sex == "Female") %>%
+  summarize(qs = quantile(height, c(1,2,3) / 4))
+```
+
+```
+Error in summarise_impl(.data, dots) : 
+  Column `qs` must be length 1 (a summary value), not 3
+```
+
+
+## `pull`
+
+The `us_murder_rate` object defined above represents just one number. Yet we are storing it in a data frame:
+
+```{r}
+s <- heights %>% 
+  filter(sex == "Female") %>%
+  summarize(average = mean(height))
+class(s)
+```
+
+## `pull`
+
+```{r}
+s %>% pull(average)
+```
+
+## Group then summarize
+
+
+```{r}
+heights %>% group_by(sex)
+```
+
+- The result does not look very different from `heights`, except we see `Groups: sex [2]` when we print the object. 
+- Although not immediately obvious from its appearance, this is now a special data frame called a _grouped data frame_ 
+
+
+## Group then summarize
+
+```{r}
+heights %>% 
+  group_by(sex) %>%
+  summarize(average = mean(height), sd = sd(height))
+```
+
+## Sorting data frames
+
+
+```{r}
+murders %>%
+  arrange(population) %>%
+  head()
+```
+
+## Sorting data frames
+
+```{r}
+murders %>% 
+  arrange(rate) %>% 
+  head()
+```
+
+## Sorting data frames
+
+```{r}
+murders %>% 
+  arrange(desc(rate)) %>% 
+  head()
+```
+
+## Nested sorting 
+
+```{r}
+murders %>% 
+  arrange(region, rate) %>% 
+  head()
+```
+
+
+## The top $n$ 
+
+
+```{r}
+murders %>% top_n(10, rate)
+```
+
+
+## Tibbles
+
+
+```{r}
+data(murders)
+class(murders)
+```
+
+- Remember `group_by`  permits stratifying data before computing summary statistics. 
+- But where is the group information stored in the data frame? 
+
+## Tibbles
+
+
+```{r}
+murders %>% group_by(region) %>% head()
+```
+
+## Tibbles
+
+```{r}
+murders %>% group_by(region) %>% class()
+```
+
+## Tibles versus data frames
+
+- Tibbles display better 
+- Subsets of tibbles are tibbles
+
+```{r}
+class(murders[,4])
+class(as_tibble(murders)[,4])
+```
+
+## Tibles versus data frames
+
+```{r}
+murders$Population
+as_tibble(murders)$Population
+```
+
+
+## Tibles versus data frames
+
+- Tibbles can have complex entries
+
+```{r}
+tibble(id = c(1, 2, 3), func = c(mean, median, sd))
+```
+
+## Tibles versus data frames
+
+- Tibbles can be grouped
+
+## Create a tibble using `data_frame` 
+
+```{r}
+grades <- data_frame(names = c("John", "Juan", "Jean", "Yao"), 
+                     exam_1 = c(95, 80, 90, 85), 
+                     exam_2 = c(90, 85, 85, 90))
+grades
+```
+
+## Another difference
+
+```{r}
+grades <- data.frame(names = c("John", "Juan", "Jean", "Yao"), 
+                     exam_1 = c(95, 80, 90, 85), 
+                     exam_2 = c(90, 85, 85, 90))
+class(grades$names)
+```
+
+## Another difference
+
+- To avoid this, we use the rather cumbersome argument `stringsAsFactors`:
+```{r}
+grades <- data.frame(names = c("John", "Juan", "Jean", "Yao"), 
+                     exam_1 = c(95, 80, 90, 85), 
+                     exam_2 = c(90, 85, 85, 90),
+                     stringsAsFactors = FALSE)
+class(grades$names)
+```
+
+## Conver to tibble
+
+```{r}
+as_tibble(grades) %>% class()
+```
+

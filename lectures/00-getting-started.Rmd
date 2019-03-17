@@ -1,0 +1,67 @@
+---
+title: "Data Science for Statisticians: Getting started"
+author: "Rafael A. Irizarry"
+date: "3/13/2019"
+output: 
+  ioslides_presentation: 
+    fig_caption: no
+    fig_height: 4
+    fig_width: 7
+    beamer_presentation: default
+  slidy_presentation: default
+---
+
+
+## The filesystem
+
+We call these directories and subdirectories:
+
+```{r filesystem, echo=FALSE, out.width="75%"}
+knitr::include_graphics("https://rafalab.github.io/dsbook/productivity/img/unix/filesystem.png")
+```
+
+
+## The home direcory on Windows
+
+```{r home-dir-windows, echo=FALSE, out.width="75%"}
+knitr::include_graphics("https://rafalab.github.io/dsbook/productivity/img/windows-screenshots/VirtualBox_Windows-7-Enterprise_23_03_2018_14_53_13.png")
+```
+
+## The home directory on a Mac
+
+
+```{r home-dir-mac, echo=FALSE, out.width="75%"}
+knitr::include_graphics("https://rafalab.github.io/dsbook/productivity/img/mac-screenshots/Screen-Shot-2018-04-13-at-4.34.01-PM.png")
+```
+
+## Full path on Windows
+
+```{r full-path-windows, echo=FALSE, out.width="75%"}
+knitr::include_graphics("https://rafalab.github.io/dsbook/productivity/img/unix/windows-filesystem-from-root.png")
+```
+
+## Full path on Mac
+
+```{r full-path-mac, echo=FALSE, out.width="75%"}
+knitr::include_graphics("https://rafalab.github.io/dsbook/productivity/img/unix/mac-filesystem-from-root.png")
+```
+
+## Working directory
+
+```{r}
+getwd()
+```
+
+## Relative path
+
+```{r}
+list.files(".")
+```
+
+
+## Full paths
+
+```{r}
+path <- getwd()
+list.files(path)
+```
