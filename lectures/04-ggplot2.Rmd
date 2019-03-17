@@ -1,0 +1,448 @@
+---
+title: "Introduction to ggplot2"
+author: "Rafael A. Irizarry"
+date: "17-3-7"
+output:
+  ioslides_presentation:
+    fig_caption: no
+    fig_height: 4
+    fig_width: 7
+  beamer_presentation: default
+  slidy_presentation: default
+---
+
+
+## ggplot2 part of tidyverse
+
+```{r, message=FALSE, warning=FALSE}
+library(ggplot2)
+```
+
+or
+
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+
+## Other alternatives
+
+- R base
+- __grid__ 
+- __lattice__. 
+
+
+## Grammar of graphics 
+
+__ggplot2__ a [grammar of graphics](http://www.springer.com/us/book/9780387245447), 
+
+- Construct hundreds of different sentences by learning just a handful of verbs, nouns and adjectives without having to memorize each specific sentence. 
+
+
+## Strength and limitation
+
+- __ggplot2__ is easier for beginners is that its default behavior is carefully chosen to satisfy the great majority of cases and is visually pleasing.
+
+- One limitation is that __ggplot2__ is designed to work exclusively with data tables in which rows are observations and columns are variables. 
+
+## Sheet cheats 
+
+
+- You should have the [ggplot2 sheet cheat](https://www.rstudio.com/wp-content/uploads/2015/03/ggplot2-cheatsheet.pdf) handy. 
+
+- To find perform an internet search for "ggplot2 cheat sheet".
+
+## The components of a graph
+
+
+```{r ggplot-example-plot, echo=FALSE}
+library(dslabs)
+data(murders)
+library(ggthemes)
+library(ggrepel)
+
+r <- murders %>% 
+  summarize(pop=sum(population), tot=sum(total)) %>% 
+  mutate(rate = tot/pop*10^6) %>% pull(rate)
+
+murders %>% ggplot(aes(x = population/10^6, y = total, label = abb)) +  
+  geom_abline(intercept = log10(r), lty=2, col="darkgrey") +
+  geom_point(aes(color=region), size = 3) +
+  geom_text_repel() + 
+  scale_x_log10() +
+  scale_y_log10() +
+  xlab("Populations in millions (log scale)") + 
+  ylab("Total number of murders (log scale)") +
+  ggtitle("US Gun Murders in 2010") +
+  scale_color_discrete(name="Region") +
+  theme_economist()
+```
+
+
+## Components
+
+* __Data__: The US murders data table is being summarized. We refer to this as the __data__ component. 
+
+*  __Geometry__: The plot above is a scatterplot. This is referred to as the 
+__geometry__ component. 
+
+* __Aesthetic mapping__: The plot uses several visual cues to represent the information provided by the dataset. T
+
+
+## Other minor components
+
+* The points are labeled with the state abbreviations.
+* The range of the x-axis and y-axis appears to be defined by the range of the data. They are both on log-scales. 
+* There are labels, a title, a legend, and we use the style of The Economist magazine.
+
+## Load data
+
+```{r}
+library(dslabs)
+data(murders)
+```
+
+## `ggplot` objects 
+
+```{r ggplot-example-1, eval=FALSE}
+ggplot(data = murders)
+```
+
+## `ggplot` objects 
+
+```{r ggplot-example-2}
+murders %>% ggplot()
+```
+
+
+## `ggplot` objects 
+
+```{r}
+p <- ggplot(data = murders)
+class(p)
+```
+
+## Rendering a plot
+
+```{r, eval=FALSE}
+print(p)
+p
+```
+
+## Geometries
+
+>> DATA %>% `ggplot()` + LAYER 1 + LAYER 2 + ... + LAYER N
+
+
+## Geometries
+
+- Geometry function names follow the pattern: `geom_X` 
+- where X is the name of the geometry. 
+- Examples include `geom_point`, `geom_bar` and `geom_histogram`.
+
+
+## Aesthetics for geometries
+
+- Look at help file. Here is `geom_point`
+
+```
+> Aesthetics
+> 
+> geom_point understands the following aesthetics (required aesthetics are in bold):
+>
+> x
+>
+> y
+> 
+> alpha
+>
+> colour
+```
+
+
+## Aesthetic mappings
+ 
+
+```{r, eval = FALSE}
+murders %>% ggplot() + 
+  geom_point(aes(x = population/10^6, y = total))
+```
+ 
+- We can drop the `x = ` and `y =` if we wanted to since these are the first and second expected arguments, as seen in the help page. 
+
+## We can add to an existing plot object
+
+```{r ggplot-example-3}
+p + geom_point(aes(population/10^6, total))
+```
+
+
+## Layers
+
+```{r  ggplot-example-4}
+p + geom_point(aes(population/10^6, total)) +
+  geom_text(aes(population/10^6, total, label = abb))
+```
+
+## Where are variabled defined?
+
+This is fine:
+
+```{r, eval=FALSE}
+p_test <- p + geom_text(aes(population/10^6, total, label = abb))
+```
+
+## Where are variabled defined?
+
+This is not:
+```{r, eval=FALSE}
+p_test <- p + geom_text(aes(population/10^6, total), label = abb) 
+```
+## Tinkering with arguments
+ 
+```{r ggplot-example-5}
+p + geom_point(aes(population/10^6, total), size = 3) +
+  geom_text(aes(population/10^6, total, label = abb))
+```
+
+
+## Tinkering with arguments
+
+```{r ggplot-example-6}
+p + geom_point(aes(population/10^6, total), size = 3) +
+  geom_text(aes(population/10^6, total, label = abb), nudge_x = 1)
+```
+
+## Global versus local aesthetic mappings
+
+
+```{r}
+args(ggplot)
+```
+
+
+## Global versus local aesthetic mappings
+
+```{r}
+p <- murders %>% ggplot(aes(population/10^6, total, label = abb))
+```
+
+## Global versus local aesthetic mappings
+
+```{r ggplot-example-7}
+p + geom_point(size = 3) + 
+  geom_text(nudge_x = 1.5)
+```
+
+## Global versus local aesthetic mappings
+
+```{r ggplot-example-8}
+p + geom_point(size = 3) +  
+  geom_text(aes(x = 10, y = 800, label = "Hello there!"))
+```
+
+
+## Scales
+
+```{r ggplot-example-9}
+p + geom_point(size = 3) + geom_text(nudge_x = 0.05) + 
+  scale_x_continuous(trans = "log10") +
+  scale_y_continuous(trans = "log10") 
+```
+
+## Scales
+
+```{r, eval=FALSE}
+p + geom_point(size = 3) +  
+  geom_text(nudge_x = 0.05) + 
+  scale_x_log10() +
+  scale_y_log10() 
+```
+
+
+## Labels and titles
+```{r, eval=FALSE}
+p + geom_point(size = 3) +  
+  geom_text(nudge_x = 0.05) + 
+  scale_x_log10() +
+  scale_y_log10() +
+  xlab("Populations in millions (log scale)") + 
+  ylab("Total number of murders (log scale)") +
+  ggtitle("US Gun Murders in 2010")
+```
+
+## Labels and titles
+```{r ggplot-example-10, echo=FALSE}
+p + geom_point(size = 3) +  
+  geom_text(nudge_x = 0.05) + 
+  scale_x_log10() +
+  scale_y_log10() +
+  xlab("Populations in millions (log scale)") + 
+  ylab("Total number of murders (log scale)") +
+  ggtitle("US Gun Murders in 2010")
+```
+
+
+## Categories as colors
+
+```{r, eval=FALSE}
+p <-  murders %>% ggplot(aes(population/10^6, total, label = abb)) +   
+  geom_text(nudge_x = 0.05) + 
+  scale_x_log10() +
+  scale_y_log10() +
+  xlab("Populations in millions (log scale)") + 
+  ylab("Total number of murders (log scale)") +
+  ggtitle("US Gun Murders in 2010")
+```
+
+## Categories as colors
+
+This won't work
+```{r, echo=FALSE}
+p <-  murders %>% ggplot(aes(population/10^6, total, label = abb)) +   
+  geom_text(nudge_x = 0.05) + 
+  scale_x_log10() +
+  scale_y_log10() +
+  xlab("Populations in millions (log scale)") + 
+  ylab("Total number of murders (log scale)") +
+  ggtitle("US Gun Murders in 2010")
+```
+
+```{r ggplot-example-11}
+p + geom_point(size = 3, color ="blue")
+```
+
+## Example: color as a mapping
+
+
+```{r ggplot-example-12}
+p + geom_point(aes(col=region), size = 3)
+```
+
+## Annotation, shapes, and adjustments
+
+```{r}
+r <- murders %>% 
+  summarize(rate = sum(total) /  sum(population) * 10^6) %>% 
+  pull(rate)
+```
+
+
+## Annotation, shapes, and adjustments
+
+```{r ggplot-example-13}
+p + geom_point(aes(col=region), size = 3) + 
+  geom_abline(intercept = log10(r))
+```
+
+## Annotation, shapes, and adjustments
+
+```{r}
+p <- p + geom_abline(intercept = log10(r), lty = 2, color = "darkgrey") +
+  geom_point(aes(col=region), size = 3)  
+```
+
+## Annotation, shapes, and adjustments
+
+```{r}
+p <- p + scale_color_discrete(name = "Region") 
+```
+
+## Add-on packages 
+
+```{r}
+library(ggthemes)
+p + theme_economist()
+```
+
+## Another example
+
+```{r}
+library(ggthemes)
+p + theme_fivethirtyeight()
+```
+
+## Putting it all together
+
+
+```{r, eval=FALSE}
+r <- murders %>% 
+  summarize(rate = sum(total) /  sum(population) * 10^6) %>%
+  pull(rate)
+
+murders %>% ggplot(aes(population/10^6, total, label = abb)) +   
+  geom_abline(intercept = log10(r), lty = 2, color = "darkgrey") +
+  geom_point(aes(col=region), size = 3) +
+  geom_text_repel() + 
+  scale_x_log10() +
+  scale_y_log10() +
+  xlab("Populations in millions (log scale)") + 
+  ylab("Total number of murders (log scale)") +
+  ggtitle("US Gun Murders in 2010") + 
+  scale_color_discrete(name = "Region") +
+  theme_economist()
+```
+
+
+## Putting it all together
+
+
+```{r final-ggplot-example, echo=FALSE}
+library(ggthemes)
+library(ggrepel)
+
+r <- murders %>% 
+  summarize(rate = sum(total) /  sum(population) * 10^6) %>%
+  pull(rate)
+
+murders %>% ggplot(aes(population/10^6, total, label = abb)) +   
+  geom_abline(intercept = log10(r), lty = 2, color = "darkgrey") +
+  geom_point(aes(col=region), size = 3) +
+  geom_text_repel() + 
+  scale_x_log10() +
+  scale_y_log10() +
+  xlab("Populations in millions (log scale)") + 
+  ylab("Total number of murders (log scale)") +
+  ggtitle("US Gun Murders in 2010") + 
+  scale_color_discrete(name = "Region") +
+  theme_economist()
+```
+
+## Quick plots with `qplot` {#qplot}
+
+Make a quick scatterplot:
+
+```{r fig.height=3, fig.width=4.5}
+data(murders)
+x <- log10(murders$population)
+y <- murders$total
+qplot(x, y)
+```
+
+
+## Grids of plots
+
+There are often reasons to graph plots next to each other. The __gridExtra__ package permits us to do that:
+
+```{r, warning=FALSE, message=FALSE, out.width='100%', fig.height=3}
+library(gridExtra)
+p1 <- murders %>%
+  mutate(rate = total/population*10^5) %>%
+  filter(population < 2*10^6) %>%
+  ggplot(aes(population/10^6, rate, label = abb)) +
+  geom_text() +
+  ggtitle("Small States")
+p2 <- murders %>%
+  mutate(rate = total/population*10^5) %>%
+  filter(population > 10*10^6) %>%
+  ggplot(aes(population/10^6, rate, label = abb)) +
+  geom_text() +
+  ggtitle("Large States")
+```
+
+## Grids of plots
+
+```{r grid-of-plots}
+grid.arrange(p1, p2, ncol = 2)
+```

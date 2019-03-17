@@ -1,0 +1,750 @@
+---
+title: "Dataviz principles"
+author: "Rafael A. Irizarry"
+date: "17-3-7"
+output:
+  ioslides_presentation:
+    fig_caption: no
+    fig_height: 4
+    fig_width: 7
+  beamer_presentation: default
+  slidy_presentation: default
+---
+
+
+```{r, warning=FALSE, message=FALSE, echo=FALSE}
+library(tidyverse)
+library(gridExtra)
+library(dslabs)
+library(ggthemes)
+ds_theme_set()
+```
+
+## Introduction
+
+These slides are inspired by:
+
+["Creating effective figures and tables"](https://www.biostat.wisc.edu/~kbroman/presentations/graphs2017.pdf) by [Karl Broman](http://kbroman.org/). Code available on [GitHub](https://github.com/kbroman/Talk_Graphs) repository. 
+[Introduction to Data Visualization course](http://paldhous.github.io/ucb/2016/dataviz/index.html) by Peter Aldhous 
+
+It is a chapter in a data visualization chapter in [this book](https://rafalab.github.io/dsbook/)
+
+## Introduction
+
+- We show some examples of plot styles we should avoid, explain how to improve them, and use these as motivation for a list of principles.
+- We compare and contrast plots that follow these principles to those that don't.
+
+## Introduction
+
+- The principles are mostly based on research related to how humans detect patterns and make visual comparisons.
+- The preferred approaches are those that best fit the way our brains process visual information.
+- When deciding on a visualization approach it is also important to keep our goal in mind.
+- We may be comparing a viewable number of quantities, describing distribution for categories or numeric values, comparing the data from two groups, or describing the relationship between two variables.
+
+
+## Encoding data using visual cues
+
+- We start by describing some principles for encoding data.
+- There are several approaches at our disposal including:
+    - position
+    - aligned lengths
+    - angles
+    - area 
+    - brightness
+    - color hue. 
+
+
+## First example
+
+```{r, echo=FALSE}
+browsers <- data.frame(Browser = rep(c("Opera","Safari","Firefox","IE","Chrome"),2),
+                       Year = rep(c(2000, 2015), each = 5),
+                       Percentage = c(3,21,23,28,26, 2,22,21,27,29)) %>%
+  mutate(Browser = reorder(Browser, Percentage))
+
+p1 <- browsers %>% ggplot(aes(x = "", y = Percentage, fill = Browser)) +
+  geom_bar(width = 1, stat = "identity", col = "black")  + coord_polar(theta = "y") +
+  theme_excel() + xlab("") + ylab("") +
+  theme(axis.text=element_blank(), 
+        axis.ticks = element_blank(), 
+        panel.grid  = element_blank()) +
+  facet_grid(.~Year)
+p1
+```
+
+## Encoding data with angles and areas: not recommended
+
+- Here we are representing quantities with both areas and angles since both the angle and area of each pie slice is proportional to the quantity it represents.
+
+- This turns out to be a sub optimal choice since, as demonstrated by perception studies, humans are not good at precisely quantifying angles and are even worse when only are is available.
+
+## Encoding data with just area: even less recommended
+
+```{r donutchart, fig.cap="Pie chart of browser usage.", echo=FALSE}
+browsers %>% ggplot(aes(x = 2, y = Percentage, fill = Browser)) +
+  geom_bar(width = 1, stat = "identity", col = "black")  + 
+  scale_x_continuous(limits=c(0.5,2.5)) + coord_polar(theta = "y") +
+  theme_excel() + xlab("") + ylab("") +
+  theme(axis.text=element_blank(), 
+        axis.ticks = element_blank(), 
+        panel.grid  = element_blank()) +
+  facet_grid(.~Year)
+
+```
+
+## pie chart vs barplots
+
+```{r barplot, fig.height = 5, echo=FALSE}
+p2 <-browsers %>%
+  ggplot(aes(Browser, Percentage)) + 
+  geom_bar(stat = "identity", width=0.5, fill=4, col = 1) +
+  ylab("Percent using the Browser") +
+  facet_grid(.~Year)
+grid.arrange(p1, p2, nrow = 2)
+```
+
+
+## If forced to make a pie chart at percentages
+
+```{r, eaco = FALSE, warning = FALSE, message=FALSE, echo=FALSE}
+library(scales)
+browsers <- filter(browsers, Year == 2015)
+at <- with(browsers, 100 - cumsum(c(0,Percentage[-length(Percentage)])) - 0.5*Percentage)  
+label <- percent(browsers$Percentage/100)
+browsers %>% ggplot(aes(x = "", y = Percentage, fill = Browser)) +
+  geom_bar(width = 1, stat = "identity", col = "black")  + coord_polar(theta = "y") +
+  theme_excel() + xlab("") + ylab("") + ggtitle("2015") +
+  theme(axis.text=element_blank(), 
+        axis.ticks = element_blank(), 
+        panel.grid  = element_blank()) +
+annotate(geom = "text", 
+              x = 1.62, 
+              y =  at, 
+              label = label, size=4)
+```
+
+## Visual cues
+
+- Position and length are the preferred ways to display quantities over angles which are preferred to area.
+
+- Brightness and color are even harder to quantifying that angles and area but, as we will see later, they are sometimes useful when more than two dimensions are being displayed.
+
+## When to include 0
+
+- When using length (e.g. barplots) it is misleading not to start the bars at 0.
+
+- This is because, by using a barplot, we are implying the length is proportional to the quantities being displayed.
+
+- By avoiding 0, relatively small difference can be made to look much bigger than they actually are.
+
+- This approach is often used by politicians or media organizations trying to exaggerate a difference.
+
+## Example 
+
+
+![](http://paldhous.github.io/ucb/2016/dataviz/img/class2_8.jpg)
+
+- (Source: Fox News, via Media Matters via Fox News via [Peter Aldhous](http://paldhous.github.io/ucb/2016/dataviz/week2.html) 
+
+
+## Same data with plot that includes 0
+
+```{r, echo=FALSE}
+data.frame(Year = as.character(c(2011, 2012, 2013)),Southwest_Border_Apprehensions = c(165244,170223,192298)) %>%
+  ggplot(aes(Year, Southwest_Border_Apprehensions )) +
+  geom_bar(stat = "identity", fill = "yellow", col = "black", width = 0.65) 
+```
+
+## Another example 
+
+![](http://i2.wp.com/flowingdata.com/wp-content/uploads/2012/08/Bush-cuts.png)
+
+-  Via Fox News via [Flowingdata](http://flowingdata.com/2012/08/06/fox-news-continues-charting-excellence/)
+
+
+## Same data with plot the includes 0
+
+```{r, echo=FALSE, fig.height=5}
+data.frame(date = c("Now", "Jan 1, 2013"), tax_rate = c(35, 39.6)) %>%
+  mutate(date = reorder(date, tax_rate)) %>%
+  ggplot(aes(date, tax_rate)) + ylab("") + xlab("") +
+  geom_bar(stat = "identity", fill = "yellow", col = "black", width = 0.5) + 
+  ggtitle("Top Tax Rate If Bush Tax Cut Expires")
+```
+
+## When not to include 0
+
+- When using position rather than length, it is **not** necessary to include 0.
+
+- This is particularly the case when we want to compare differences between groups relative the variability seen within the groups.
+
+
+## Example: Life expectancy by continent in 2012 
+
+```{r, echo=FALSE, fig.height=4, fig.width=8}
+p1 <- gapminder %>% filter(year == 2012) %>%
+  ggplot(aes(continent, life_expectancy)) +
+  geom_point()
+p2 <- p1 +
+  scale_y_continuous(limits = c(0, 84))
+grid.arrange(p2, p1, ncol = 2)
+```
+
+## Do not distrort quantities
+
+
+![](http://paldhous.github.io/ucb/2016/dataviz/img/class2_30.jpg)
+
+(Source: President Barack Obama’s 2011 State of the Union Address via [Peter Aldhous] (http://paldhous.github.io/ucb/2016/dataviz/index.html))
+
+## Use area not radius
+
+```{r, echo = FALSE}
+gdp <- c(14.6, 5.7, 5.3, 3.3, 2.5)
+gdp_data <- data.frame(Country = rep(c("United States", "China", "Japan", "Germany", "France"),2),
+           y = factor(rep(c("Radius","Area"),each=5), levels = c("Radius", "Area")),
+           GDP= c(gdp^2/min(gdp^2), gdp/min(gdp))) %>% 
+   mutate(Country = reorder(Country, GDP))
+gdp_data %>% 
+  ggplot(aes(Country, y, size = GDP)) + 
+  geom_point(show.legend = FALSE, color = "blue") + 
+  scale_size(range = c(2,30)) +
+  coord_flip() + ylab("") + xlab("")
+```
+
+## But we should not be using area or radius
+ 
+```{r, echo=FALSE}
+gdp_data %>% filter(y == "Area") %>% ggplot(aes(Country, GDP)) + geom_bar(stat = "identity") + ylab("GDP in trillions of US dollars")
+```
+
+## Order by a meaningful value
+
+```{r, echo=FALSE}
+data(murders)
+p1 <- murders %>% mutate(murder_rate = total / population * 100000) %>%
+  ggplot(aes(state, murder_rate)) +
+  geom_bar(stat="identity") +
+  coord_flip() +
+  xlab("")
+p1
+```
+
+
+## Order by a meaningful value
+
+```{r, echo=FALSE, fig.height=4, fig.width=8}
+data(murders)
+p1 <- murders %>% mutate(murder_rate = total / population * 100000) %>%
+  ggplot(aes(state, murder_rate)) +
+  geom_bar(stat="identity") +
+  coord_flip() +
+  xlab("")
+
+p2 <- murders %>% mutate(murder_rate = total / population * 100000) %>%
+  mutate(state = reorder(state, murder_rate)) %>%
+  ggplot(aes(state, murder_rate)) +
+  geom_bar(stat="identity") +
+  coord_flip() +
+  xlab("")
+grid.arrange(p1, p2, ncol = 2)
+```
+
+## Another example: Average income by region in 1970 (colors = continent)
+
+```{r, echo=FALSE, fig.height=4, fig.width=8}
+past_year <- 1970
+p1 <- gapminder %>% 
+  mutate(dollars_per_day = gdp/population/365) %>%
+  filter(year == past_year & !is.na(gdp)) %>%
+  ggplot(aes(region, dollars_per_day, fill = continent)) +
+  geom_boxplot(show.legend=FALSE) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  xlab("")
+p2 <- gapminder %>% 
+  mutate(dollars_per_day = gdp/population/365) %>%
+  filter(year == past_year & !is.na(gdp)) %>%
+  mutate(region = reorder(region, dollars_per_day, FUN = median)) %>%
+  ggplot(aes(region, dollars_per_day, fill = continent)) +
+  geom_boxplot(show.legend=FALSE) +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  xlab("")
+grid.arrange(p1, p2, ncol=2)
+```
+
+
+
+## Show the data
+
+
+```{r, echo=FALSE}
+data(heights)
+p1 <- heights %>% group_by(sex) %>% summarize(average = mean(height), se=sd(height)/sqrt(n())) %>%
+  ggplot(aes(sex, average)) + theme_excel() + 
+  geom_errorbar(aes(ymin = average - 2*se, ymax = average+2*se), width = 0.25)+
+  geom_bar(stat = "identity", width=0.5, fill=4, col = 1) +
+  ylab("Height in inches")
+p1
+```
+
+## Show the data
+
+```{r, echo=FALSE}
+heights %>% ggplot(aes(sex, height)) + geom_point() 
+```
+
+## jitter and alpha blending
+
+```{r, echo=FALSE}
+heights %>% ggplot(aes(sex, height)) + geom_jitter(width = 0.1, alpha = 0.2) 
+```
+
+
+## Compare distributions if too many points
+
+
+```{r, echo=FALSE, fig.height=4, fig.width=8}
+heights %>% 
+  ggplot(aes(height, ..density..)) +
+  geom_histogram(binwidth = 1, color="black") +
+  facet_grid(.~sex, scales = "free_x")
+```
+
+## Ease comparisons: Use common axes
+
+```{r, echo=FALSE, fig.height=4, fig.width=8}
+heights %>% 
+  ggplot(aes(height, ..density..)) +
+  geom_histogram(binwidth = 1, color="black") +
+  facet_grid(.~sex)
+```
+
+## Ease comparisons:  align vertically
+
+```{r, echo=FALSE}
+p2 <- heights %>% 
+  ggplot(aes(height, ..density..)) +
+  geom_histogram(binwidth = 1, color="black") +
+  facet_grid(sex~.)
+p2
+```
+
+
+## Ease comparisons: align horizontally
+
+```{r,echo=FALSE}
+p3 <- heights %>% 
+  ggplot(aes(sex, height)) + 
+  geom_boxplot(coef=3) + 
+  geom_jitter(width = 0.1, alpha = 0.2) +
+  ylab("Height in inches")
+p3
+```
+
+## Comparison
+
+```{r, echo=FALSE, fig.width=7, fig.height=4}
+grid.arrange(p1, p2, p3, ncol = 3)
+```
+
+## Consider transformations
+
+- As an example consider this barplot showing the average population sizes for each continent in 2015:
+
+## Consider transformations
+
+```{r, echo=FALSE}
+data(gapminder)
+p1 <- gapminder %>% filter(year == 2015) %>%
+  group_by(continent) %>% summarize(population = mean(population)) %>%
+  mutate(continent = reorder(continent, population)) %>%
+  ggplot(aes(continent, population/10^6)) + 
+  geom_bar(stat = "identity", width=0.5, fill=4) +
+  theme_excel() + 
+  ylab("Population in Millions") +
+  xlab("Continent")
+p1
+```
+
+## Show the data
+
+```{r ,echo=FALSE}
+p2 <- gapminder %>% filter(year == 2015) %>% 
+  mutate(continent = reorder(continent, population, mean)) %>%
+  ggplot(aes(continent, population/10^6)) + 
+  ylab("Population in Millions") +
+  xlab("Continent")
+p2 +  geom_jitter(width = .1, alpha = .5) 
+```
+
+## Consider transformations
+
+```{r, echo=FALSE, fig.width=8, fig.height=4}
+p2 <- p2 + geom_boxplot(coef=3) + 
+   geom_jitter(width = .1, alpha = .5) + scale_y_log10(breaks = c(1,10,100,1000))
+grid.arrange(p1, p2, ncol = 2)
+```
+
+
+## How can we ease comparisons?
+
+```{r, echo=FALSE}
+gapminder %>% 
+  filter(year %in% c(1970, 2010) & !is.na(gdp)) %>%
+  mutate(dollars_per_day = gdp/population/365) %>%
+  mutate(labels = paste(year, continent)) %>%
+  ggplot(aes(labels, dollars_per_day)) +
+  geom_boxplot() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  scale_y_continuous(trans = "log2") + 
+  ylab("Income in dollars per day")
+```
+
+## Comparisons should be adjacent
+
+```{r, echo=FALSE}
+gapminder %>% 
+  filter(year %in% c(1970, 2010) & !is.na(gdp)) %>%
+  mutate(dollars_per_day = gdp/population/365) %>%
+  mutate(labels = paste(continent, year)) %>%
+  ggplot(aes(labels, dollars_per_day)) +
+  geom_boxplot() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  scale_y_continuous(trans = "log2") + 
+  ylab("Income in dollars per day")
+```
+
+## Use color to highlight comparison
+
+```{r,echo=FALSE}
+ gapminder %>% 
+  filter(year %in% c(1970, 2010) & !is.na(gdp)) %>%
+  mutate(dollars_per_day = gdp/population/365, year = factor(year)) %>%
+  ggplot(aes(continent, dollars_per_day, fill = year)) +
+  geom_boxplot() + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  scale_y_continuous(trans = "log2") + 
+  ylab("Income in dollars per day")
+```
+
+## Think of the color blind
+
+- About 10% of the population is color blind.
+- Unfortunately, the default colors used in ggplot are not optimal for this group.
+- However, ggplot does it make it easy to change the color palette used in the plots.
+
+## Think of the color blind
+
+- Here is an example of how we can use color blind friendly pallet described [here](http://www.cookbook-r.com/Graphs/Colors_(ggplot2)/#a-colorblind-friendly-palette): 
+
+## Think of the color blind
+
+```{r, echo=FALSE}
+color_blind_friendly_cols <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
+p1 <- data.frame(x=1:8, y=1:8, col = as.character(1:8)) %>% ggplot(aes(x, y, color = col)) + geom_point(size=5)
+p1 + scale_color_manual(values=color_blind_friendly_cols)
+```
+
+## Think of the color blind
+
+-  There are several resources that help you select colors, for example [this one](http://bconnelly.net/2013/10/creating-colorblind-friendly-figures/). 
+
+## Alternatives to scatterplots
+
+- Scatter plots are default when comparing two variables
+- Slope charts are good for before after comparisons
+- Bland-Altman plots are good for when we care about difference
+
+## Slope charts
+
+```{r,echo=FALSE}
+west <- c("Western Europe","Northern Europe","Southern Europe",
+          "Northern America","Australia and New Zealand")
+
+dat <- gapminder %>% 
+  filter(year%in% c(2010, 2015) & region %in% west & 
+           !is.na(life_expectancy) & population > 10^7) 
+
+dat %>%
+  mutate(location = ifelse(year == 2010, 1, 2), 
+         location = ifelse(year == 2015 & country%in%c("United Kingdom","Portugal"), location+0.22, location),
+         hjust = ifelse(year == 2010, 1, 0)) %>%
+  mutate(year = as.factor(year)) %>%
+  ggplot(aes(year, life_expectancy, group = country)) +
+  geom_line(aes(color = country), show.legend = FALSE) +
+  geom_text(aes(x = location, label = country, hjust = hjust), 
+            show.legend = FALSE) +
+  xlab("") + ylab("Life Expectancy")
+```
+
+## Scatter plot (with common axes)
+
+```{r, echo=FALSE}
+library(ggrepel)
+west <- c("Western Europe","Northern Europe","Southern Europe",
+          "Northern America","Australia and New Zealand")
+
+dat <- gapminder %>% 
+  filter(year%in% c(2010, 2015) & region %in% west & 
+           !is.na(life_expectancy) & population > 10^7) 
+
+dat %>% 
+   mutate(year = paste0("life_expectancy_", year)) %>%
+   select(country, year, life_expectancy) %>% spread(year, life_expectancy) %>% 
+   ggplot(aes(x=life_expectancy_2010,y=life_expectancy_2015, label = country)) + geom_point() + geom_text_repel() +
+  scale_x_continuous(limits=c(78.5, 83)) +
+  scale_y_continuous(limits=c(78.5, 83)) +
+  geom_abline(lty = 2) +
+  xlab("2010") + ylab("2015")
+```
+
+
+## Bland-Altman plot
+
+```{r, echo=FALSE}
+library(ggrepel)
+dat %>% 
+   mutate(year = paste0("life_expectancy_", year)) %>%
+   select(country, year, life_expectancy) %>% spread(year, life_expectancy) %>% 
+  mutate(average = (life_expectancy_2015 + life_expectancy_2010)/2,
+         difference = life_expectancy_2015 - life_expectancy_2010) %>%
+  ggplot(aes(average, difference, label = country)) + 
+  geom_point() +
+  geom_text_repel() +
+  geom_abline(lty = 2) +
+  xlab("Average of 2010 and 2015") + ylab("Difference between 2015 and 2010")
+```
+
+## Encoding a third variable
+
+```{r, echo=FALSE}
+present_year <- 2010
+
+dat <- gapminder %>%
+  mutate(region = case_when(
+    .$region %in% west ~ "The West",
+    .$region %in% "Northern Africa" ~ "Northern Africa",
+    .$region %in% c("Eastern Asia", "South-Eastern Asia") ~ "East Asia",
+    .$region == "Southern Asia"~ "Southern Asia",
+    .$region %in% c("Central America", "South America", "Caribbean") ~ "Latin America",
+    .$continent == "Africa" & .$region != "Northern Africa" ~ "Sub-Saharan Africa",
+    .$region %in% c("Melanesia", "Micronesia", "Polynesia") ~ "Pacific Islands"),
+    dollars_per_day = gdp / population / 365) %>%
+  filter(year %in% present_year & !is.na(gdp) & !is.na(infant_mortality) & !is.na(region) ) %>%
+  mutate(OPEC = ifelse(country%in%opec, "Yes", "No")) 
+
+dat %>% 
+  ggplot(aes(dollars_per_day, 1 - infant_mortality/1000, 
+             col = region, size = population/10^6,
+             pch =  OPEC)) +
+  scale_x_continuous(trans = "log2", limits=c(0.25, 150)) +
+  scale_y_continuous(trans = "logit",limit=c(0.875, .9981),
+                     breaks=c(.85,.90,.95,.99,.995,.998)) + 
+  geom_point(alpha = 0.5) 
+```
+
+## Encoding a third variable
+
+```{r, echo=FALSE}
+dat=data.frame(x=c(0:25))
+ggplot() +
+  theme_minimal() +
+  theme(axis.title.x=element_blank(),
+        axis.text.x=element_blank(),
+        axis.ticks.x=element_blank(),
+        axis.title.y=element_blank(),
+        axis.text.y=element_blank(),
+        axis.ticks.y=element_blank(),
+        panel.grid.major = element_blank(), 
+        panel.grid.minor = element_blank()) +
+scale_shape_identity() + scale_y_reverse() +
+geom_point(dat, mapping=aes(x%%9, x%/%9, shape=x), size=10, fill="blue") +
+geom_text(dat, mapping=aes(x%%9, x%/%9+0.25, label=x), size=6) 
+```
+
+
+## Example
+
+- The data used for these plots were collected, organized and distributed by the [Tycho Project](http://www.tycho.pitt.edu/).
+- They include weekly reported counts data for seven diseases from 1928 to 2011, from all fifty states.
+
+```{r, echo=FALSE, warning=FALSE}
+data(us_contagious_diseases)
+```
+ 
+## One state is easy 
+```{r, echo=FALSE}
+the_disease <- "Measles"
+dat <- us_contagious_diseases %>%
+  filter(!state%in%c("Hawaii","Alaska") & disease == the_disease) %>%
+  mutate(rate = count / population * 10000) %>% 
+  mutate(state = reorder(state, rate)) 
+
+dat %>% filter(state == "California") %>%
+  ggplot(aes(year, rate)) +
+  geom_line() + ylab("Cases per 10,000")  + 
+  geom_vline(xintercept=1963, col = "blue")
+```
+
+## Paletts
+
+-  Diverging colors are used to represent values that diverge from a center.
+- We put equal emphasis on both ends of the data range: higher than the center and lower than the center.
+- An example of when we would use a divergent pattern would be if we were to show height in standard deviations away from the average.
+- Here are some examples of divergent patterns: 
+
+## Sequential Paletts
+
+```{r, echo=FALSE}
+library(RColorBrewer)
+display.brewer.all(type="seq")
+```
+
+
+## Divergent Paletts
+
+```{r}
+library(RColorBrewer)
+display.brewer.all(type="div")
+```
+
+## Example 
+
+```{r, echo=FALSE, fig.width=8}
+dat %>% ggplot(aes(year, state,  fill = rate)) +
+  geom_tile(color = "grey50") +
+  scale_x_continuous(expand=c(0,0)) +
+  scale_fill_gradientn(colors = brewer.pal(9, "Reds"), trans = "sqrt") +
+  geom_vline(xintercept=1963, col = "blue") +
+  theme_minimal() +  theme(panel.grid = element_blank()) +
+  ggtitle(the_disease) + 
+  ylab("") + 
+  xlab("")
+```
+
+## Alternative: eliminate one variable
+
+```{r, echo=FALSE}
+avg <- us_contagious_diseases %>%
+  filter(disease==the_disease) %>% group_by(year) %>%
+  summarize(us_rate = sum(count, na.rm=TRUE)/sum(population, na.rm=TRUE)*10000)
+dat %>% ggplot() +
+  geom_line(aes(year, rate, group = state),  color = "grey50", 
+            show.legend = FALSE, alpha = 0.2, size = 1) +
+  geom_line(mapping = aes(year, us_rate),  data = avg, size = 1, color = "black") +
+  scale_y_continuous(trans = "sqrt", breaks = c(5,25,125,300)) + 
+  ggtitle("Cases per 10,000 by state") + 
+  xlab("") + 
+  ylab("") +
+  geom_text(data = data.frame(x=1955, y=50), mapping = aes(x, y, label="US average"), color="black") + 
+  geom_vline(xintercept=1963, col = "blue") 
+```
+
+## Avoid pseudo three dimensional plots
+
+![Pseudo 3-D.](https://raw.githubusercontent.com/kbroman/Talk_Graphs/master/Figs/fig8b.png)
+
+(Source: Karl Broman)
+
+## Avoid pseudo three dimensional plots
+
+```{r colors-for-different-lines, echo=FALSE}
+##First read data
+url <- "https://github.com/kbroman/Talk_Graphs/raw/master/R/fig8dat.csv"
+dat <- read.csv(url)
+
+##Now make alternative plot
+dat %>% gather(drug, survival, -log.dose) %>%
+  mutate(drug = gsub("Drug.","",drug)) %>%
+  ggplot(aes(log.dose, survival, color = drug)) +
+  geom_line()    
+```
+
+## Avoid gratuitousthree dimensional plots
+
+- Pseudo 3D is sometimes used completely gratuitously: plots are made to look 3D even when the 3rd dimension does not represent a quantity.
+- This only adds confusion and makes it harder to relay your message.
+
+## Avoid gratuitousthree dimensional plots
+
+![](https://raw.githubusercontent.com/kbroman/Talk_Graphs/master/Figs/fig1e.png)
+
+## Avoid gratuitousthree dimensional plots
+
+```{r,echo=FALSE, out.width = "600px"}
+knitr::include_graphics("https://raw.githubusercontent.com/kbroman/Talk_Graphs/master/Figs/fig2d.png")
+```
+
+## Avoid too any significant digits
+
+- By default, statistical software like R returns many significant digits.
+- The default behavior in R is to show 7 significant digits.
+- So many digits often adds no information and the visual clutter than can makes it hard for the consumer of your table to understand the message.
+- As an example here are the per 10,000 disease rates for California across the five decades 
+
+## Avoid too any significant digits
+
+```{r, echo=FALSE}
+tmp <- options()$digits
+options(digits=7)
+dat <- us_contagious_diseases %>%
+  filter(year %in% seq(1940,1980,10) &  state == "California" &
+          disease %in% c("Measles","Pertussis","Polio")) %>%
+  mutate(rate = count / population * 10000) %>% 
+  mutate(state = reorder(state, rate)) %>% 
+  select(state, year, disease, rate) %>%
+  spread(disease, rate)
+dat %>% knitr::kable()
+options(digits=tmp)
+```
+
+## Avoid too any significant digits
+
+-  We are reporting precision up to 0.00001 cases per 10,000, a very small value in the context the changes that are occurring across the dates.
+- In this case 2 significant figure is more than enough and makes the point that rates are decreasing clearly: 
+
+## Avoid too any significant digits
+
+```{r, echo = FALSE}
+dat %>% mutate_if(is.numeric, funs(round(., digits=1))) %>% knitr::kable()
+```
+
+
+## Compare vertically
+
+-  Another principle, related to displaying tables, is to place values being compared on columns rather than rows.
+
+## Compare vertically 
+
+```{r, echo = FALSE}
+dat %>% mutate_if(is.numeric, funs(round(., digits=1))) %>% knitr::kable()
+```
+
+## Do not compare horizontally
+
+```{r, echo=FALSE}
+dat <- us_contagious_diseases %>%
+  filter(year %in% seq(1940,1980,10) &  state == "California" &
+          disease %in% c("Measles","Pertussis","Polio")) %>%
+  mutate(rate = count / population * 10000) %>% 
+  mutate(state = reorder(state, rate)) %>% 
+  select(state, year, disease, rate) %>%
+  spread(year, rate)
+dat %>% mutate_if(is.numeric, funs(round(., digits=1))) %>% knitr::kable()
+```
+
+## Further reading:
+
+* ER Tufte (1983) The visual display of quantitative information.
+Graphics Press. 
+* ER Tufte (1990) Envisioning information.
+Graphics Press. 
+*  ER Tufte (1997) Visual explanations. Graphics Press. 
+* WS Cleveland (1993) Visualizing data. Hobart Press. 
+* WS Cleveland (1994) The elements of graphing data. CRC Press. 
+* A Gelman, C Pasarica, R Dodhia (2002) Let's practice what we preach: Turning tables into graphs. The American Statistician 56:121-130. 
+* NB Robbins (2004) Creating more effective graphs. Wiley. 
+* [Nature Methods columns](http://bang.clearscience.info/?p=546)  
+* A Cairo (2013) The Functional Art: An Introduction to Information Graphics and Visualization. New Riders 
+* N Yau (2013) Data Points: Visualization That Means Something. Wiley
+

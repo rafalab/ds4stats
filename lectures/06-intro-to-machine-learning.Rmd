@@ -1,0 +1,967 @@
+---
+title: "Brief Introduction to Machine Learning"
+author: "Rafael A. Irizarry"
+date: "17-3-7"
+output:
+  ioslides_presentation:
+    fig_caption: no
+    fig_height: 4
+    fig_width: 7
+  beamer_presentation: default
+  slidy_presentation: default
+---
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+library(tidyverse)
+library(dslabs)
+ds_theme_set()
+```
+
+## Introduction
+
+
+Machine learning success stories include:
+
+- the hand written zip code readers implemented by the postal service,
+- speech recognition such as Apple's Siri, 
+- movie recommendation systems, 
+- spam and malware detectors,
+- housing prices predictors, and 
+- driver-less cars.
+
+
+## Notation
+
+- In Machine Learning, data comes in the form of
+
+    1. the _outcome_ we want to predict and 
+    2. the _features_ that we will use to predict the outcome.
+
+- We want to build an algorithm that takes feature values as input and returns a prediction for the outcome when we don't know the outcome.
+
+## Notation
+
+```{r,echo=FALSE}
+n <- 1
+tmp <- data.frame(outcome=rep("?",n), 
+                  feature_1 = paste0("$X_1$"),
+                  feature_2 = paste0("$X_2$"),
+                  feature_3 = paste0("$X_3$"),
+                  feature_4 = paste0("$X_4$"),
+                  feature_5 = paste0("$X_5$"))
+tmp %>% knitr::kable(align="c")
+```
+
+## Notation
+
+- To _build a model_ we collect data with known outcome: 
+
+```{r, echo=FALSE}
+n <- 6
+tmp <- data.frame(outcome = paste0("$y_", 1:n,"$"), 
+                  feature_1 = paste0("$x_{",1:n,",1}$"),
+                  feature_2 = paste0("$x_{",1:n,",2}$"),
+                  feature_3 = paste0("$x_{",1:n,",3}$"),
+                  feature_4 = paste0("$x_{",1:n,",4}$"),
+                  feature_5 = paste0("$x_{",1:n,",5}$"))
+tmp %>% knitr::kable()
+```
+
+## Notation
+
+- Prediction problems can be divided into categorical and continuous outcomes.
+
+- For categorical outcomes $Y$ can be any one of $K$ classes.
+
+- The number of classes can vary greatly across applications.
+
+- For example, in the digit reader data, $K=10$ with the classes being the digits 0, 1, 2, 3, 4, 5, 6, 7, 8, and 9.
+
+## Examples
+
+- In speech recognition, the outcome are all possible words we are trying to detect.
+
+- Spam detection has two outcomes: spam or not spam.
+
+- In this book, we denote the $K$ categories with indexes $k=1,\dots,K$.
+
+- However, for binary data we will use $k=0,1$ for mathematical convenience which we demonstrate later.
+
+
+## An example 
+
+```{r, echo=FALSE, out.width="75%"}
+knitr::include_graphics("https://rafalab.github.io/dsbook/ml/img/how-to-write-a-address-on-an-envelope-how-to-write-the-address-on-an-envelope-write-address-on-envelope-india-finishedenvelope-x69070.png")
+```
+
+## An example 
+
+- These are considered known and serve as the training set. 
+
+
+```{r, echo=FALSE, cache=TRUE}
+mnist <- read_mnist()
+tmp <- lapply( c(1,4,5), function(i){
+    expand.grid(Row=1:28, Column=1:28) %>%  
+      mutate(id=i, label=mnist$train$label[i],  
+             value = unlist(mnist$train$images[i,])) 
+})
+tmp <- Reduce(rbind, tmp)
+tmp %>% ggplot(aes(Row, Column, fill=value)) + 
+    geom_raster() + 
+    scale_y_reverse() +
+    scale_fill_gradient(low="white", high="black") +
+    facet_grid(.~label)
+```
+
+## An example 
+
+
+```{r, echo=FALSE}
+tmp %>% ggplot(aes(Row, Column, fill=value)) + 
+    geom_point(pch=21) + 
+    scale_y_reverse() +
+    scale_fill_gradient(low="white", high="black") +
+    facet_grid(.~label)
+```
+
+## An example 
+
+- For each digitized image $i$ we have a categorical outcome $Y_i$ which can be one of 10 values: $0,1,2,3,4,5,6,7,8,9$ and features $X_{i,1}, \dots, X_{i,784}$.
+
+- We use bold face $\mathbf{X}_i = (X_{i,1}, \dots, X_{i,784})$ to distinguish the vector of predictors from the individual predictors.
+
+- When referring to an arbitrary set of features we drop the index $i$ and use $Y$ and $\mathbf{X} = (X_{1}, \dots, X_{784})$.
+
+- The machine learning tasks is to build an algorithm that returns a prediction for any of the possible values of the features.
+
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(dslabs)
+ds_theme_set()
+```
+
+## The confusion matrix
+
+```{r, message=FALSE, warning=FALSE}
+library(caret)
+library(dslabs)
+data(heights)
+```
+
+## A simple example: one predictor
+
+```{r}
+y <- heights$sex
+x <- heights$height
+```
+
+- This is clearly a categorical outcome since $Y$ can be `Male` or `Female` and we only have one predictor: height.
+
+- Can we do better than guessing? To answer this question we need to quantitative definition of **better**. 
+
+## Training and test sets
+
+```{r}
+set.seed(2)
+test_index <- createDataPartition(y, times = 1, p = 0.5, list = FALSE)
+
+train_set <- heights[-test_index, ]
+test_set <- heights[test_index, ]
+```
+
+## Training and test sets
+
+- We will now develop an algorithm using **only** the training set.
+
+- Once we are done developing the algorithm we will _freeze_ it and evaluate it using the test set.
+
+- The simplest way to evaluate the algorithm when the outcomes are categorical is by simply reporting the proportion of cases that were correctly predicted **in the test set**.
+
+- This metric is usually referred to as _overall accurarcy_.
+
+
+## A first algorithm: guessing
+
+```{r}
+n <- length(test_index)
+y_hat <- sample(c("Male", "Female"), n, replace = TRUE) %>%
+  factor(levels = levels(test_set$sex))
+```
+
+## Overall accuracy
+
+- The _overall accuacy_ is simply defined as the overall proportion that is predicted correctly:
+
+
+```{r}
+mean(y_hat == test_set$sex)
+```
+
+## Second example of an algorithm
+
+```{r}
+y_hat <- ifelse(x > 62, "Male", "Female") %>% 
+  factor(levels = levels(test_set$sex))
+```
+
+- The accuracy goes way up from 0.50:
+
+```{r}
+mean(y == y_hat)
+```
+
+## Overall accuracy
+
+- Can we do even better? 
+
+- Examine the accuracy of 10 different cutoffs and pick the one yielding the best result.
+
+
+```{r}
+cutoff <- seq(61, 70)
+accuracy <- map_dbl(cutoff, function(x){
+  y_hat <- ifelse(train_set$height > x, "Male", "Female") %>%
+    factor(levels = levels(test_set$sex))
+  mean(y_hat == train_set$sex)
+})
+```
+
+## Overall accuracy
+
+```{r accuracy-v-cutoff, echo=FALSE}
+data.frame(cutoff, accuracy) %>% 
+  ggplot(aes(cutoff, accuracy)) + 
+  geom_point() + 
+  geom_line() 
+```
+
+## Overall accuracy
+
+- We see that the maximum value is:
+
+
+```{r}
+max(accuracy)
+```
+
+- and it is maximized with the cutoff:
+
+```{r}
+best_cutoff <- cutoff[which.max(accuracy)]
+best_cutoff
+```
+
+
+## Overall accuracy
+
+- Now we can now test this cutoff on our test set to make sure our accuracy is not overly optimistic:
+
+
+```{r}
+y_hat <- ifelse(test_set$height > best_cutoff, "Male", "Female") %>% 
+  factor(levels = levels(test_set$sex))
+y_hat <- factor(y_hat)
+mean(y_hat == test_set$sex)
+```
+
+## The Confusion Matrix
+
+- The prediction rule we developed in the previous section predicts `Male` if the student's is taller than 64 inches.
+
+- Given that the average female is about 65 inches this prediction rule seems wrong.
+
+- What happened? If a student is the height of the average female, shouldn't we predict `Female`? 
+
+## The Confusion Matrix
+
+- Generally speaking, overall accuracy can be a deceptive measure.
+
+- To see this we will start by constructing what is referred to as the _confusion matrix_, which basically tabulates each combination of prediction and actual value.
+
+- We can do this in R using the function `table`:
+
+
+```{r}
+table(predicted = y_hat, actual = test_set$sex)
+```
+
+## The Confusion Matrix
+
+- If we compute the accuracy separately for each sex we get:
+
+```{r}
+test_set %>% 
+  mutate(y_hat = y_hat) %>%
+  group_by(sex) %>% 
+  summarize(accuracy = mean(y_hat == sex))
+```
+
+## The Confusion Matrix
+
+The problem comes form an inbalance in the training set
+
+```{r}
+prev <- mean(y == "Male")
+prev
+```
+
+## Sensitivity and Specificity 
+
+```{r, echo=FALSE}
+mat <- matrix(c("True positives (TP)", "False negatives (FN)", 
+                "False positives (FP)", "True negatives (TN)"), 2, 2)
+colnames(mat) <- c("Actually Positive", "Actually Negative")
+rownames(mat) <- c("Predicted positve", "Predicted negative")
+as.data.frame(mat) %>% knitr::kable()
+```
+
+## Sensitivity and Specificity 
+
+| A measure of | Name 1 | Name 2 | Definition | Probability representation |
+|------|:--------------:|:------:|:----------:|:--------------------------:|
+Sensitivity | True positive rate (TPR) | Recall | $TP / (TP + FN)$ | $\mbox{Pr}(\hat{Y}=1 \mid Y=1)$ |
+Specificity | True negative rate (TNR) | 1 minus false positive rate (1-FPR) | $TN / (TN+FP)$ | $\mbox{Pr}(\hat{Y}=0 \mid Y=0)$ |
+Specificity | Positive Predictive value (PPV) | Precision | $TP / (TP+FP)$ | $\mbox{Pr}(Y=1 \mid \hat{Y}=1)$|
+
+## Sensitivity and Specificity 
+
+```{r}
+confusionMatrix(data = y_hat, reference = test_set$sex)
+```
+
+
+## Balanced accuracy and $F_1$ score
+
+- One metric that is preferred over overall accuracy is the average of specificity and sensitivity, refereed to as _balanced accuracy_.
+
+$$
+\frac{1}{\frac{1}{2}\left(\frac{1}{\mbox{recall}} + 
+    \frac{1}{\mbox{precision}}\right) }
+$$
+
+
+## ROC and precision-recall curves
+
+```{r}
+p <- 0.9
+n <- length(test_index)
+y_hat <- sample(c("Male", "Female"), n, replace = TRUE, 
+                prob=c(p, 1-p)) %>% 
+  factor(levels = levels(test_set$sex))
+
+mean(y_hat == test_set$sex)
+```
+
+
+## ROC and precision-recall curves
+
+```{r, echo=FALSE}
+probs <- seq(0, 1, length.out = 10)
+guessing <- map_df(probs, function(p){
+  y_hat <- sample(c("Male", "Female"), 
+                  length(test_index), replace = TRUE, 
+                  prob=c(p, 1-p)) %>% 
+    factor(levels = c("Female", "Male"))
+  list(method = "Guessing",
+       FPR = 1 - specificity(y_hat, test_set$sex),
+       TPR = sensitivity(y_hat, test_set$sex))
+})
+guessing %>% qplot(FPR, TPR, data =., 
+                   xlab = "1 - Specificity", 
+                   ylab = "Sensitivity")
+```
+
+## ROC and precision-recall curves
+
+```{r}
+cutoffs <- c(50, seq(60, 75), 80)
+height_cutoff <- map_df(cutoffs, function(x){
+  y_hat <- ifelse(test_set$height > x, "Male", "Female") %>% 
+    factor(levels = c("Female", "Male"))
+   list(method = "Height cutoff",
+        FPR = 1-specificity(y_hat, test_set$sex),
+        TPR = sensitivity(y_hat, test_set$sex))
+})
+```
+
+## ROC and precision-recall curves
+
+
+```{r, echo=FALSE}
+bind_rows(guessing, height_cutoff) %>%
+  ggplot(aes(FPR, TPR, color = method)) +
+  geom_line() +
+  geom_point() +
+  xlab("1 - Specificity") +
+  ylab("Sensitivity")
+```
+
+
+## ROC and precision-recall curves
+
+```{r,echo=FALSE}
+map_df(cutoffs, function(x){
+  y_hat <- ifelse(test_set$height > x, "Male", "Female") %>% 
+    factor(levels = c("Female", "Male"))
+   list(method = "Height cutoff",
+        cutoff = x, 
+        FPR = 1-specificity(y_hat, test_set$sex),
+        TPR = sensitivity(y_hat, test_set$sex))
+}) %>%
+  ggplot(aes(FPR, TPR, label = cutoff)) +
+  geom_line() +
+  geom_point() +
+  geom_text(nudge_y = 0.01)
+```
+
+## ROC and precision-recall curves
+
+
+
+```{r, echo=FALSE, warning=FALSE, message=FALSE}
+cutoffs <- c(50, seq(55, 75), 80)
+probs <- seq(0.05, .95, length.out = 50)
+guessing <- map_df(probs, function(p){
+  y_hat <- sample(c("Male", "Female"), length(test_index), replace = TRUE, prob=c(p, 1-p)) %>% 
+    factor(levels = c("Male", "Female"))
+  list(method = "Guess",
+    recall = sensitivity(y_hat, relevel(test_set$sex, "Male", "Female")),
+    precision = precision(y_hat, relevel(test_set$sex, "Male", "Female")))
+})
+
+height_cutoff <- map_df(cutoffs, function(x){
+  y_hat <- ifelse(test_set$height > x, "Male", "Female") %>% 
+    factor(levels = c("Male", "Female"))
+  list(method = "Height cutoff",
+       recall = sensitivity(y_hat, relevel(test_set$sex, "Male", "Female")),
+    precision = precision(y_hat, relevel(test_set$sex, "Male", "Female")))
+})
+bind_rows(guessing, height_cutoff) %>%
+  ggplot(aes(recall, precision, color = method)) +
+  geom_line() +
+  geom_point()
+```
+
+## Case study: a bit more realistic
+
+- We want to build an algorithm that can determine if a digit is a 2 or 7 from the predictors.
+
+- We are not quite ready to build algorithms with 784 predictors so we will extract two simple predictors from the 784: the proportion of dark pixels that are in the upper left quadrant ($X_1$) and the lower right quadrant ($X_2$).
+
+## Case study
+
+- We then selected a random sample of 1,000 digits, 500 in the a train set and 500 in the test set and provide them here:
+
+
+```{r}
+data("mnist_27")
+```
+
+## Case study
+
+
+```{r, echo=FALSE}
+mnist_27$train %>% ggplot(aes(x_1, x_2, color = y)) +
+  geom_point()
+```
+
+
+## Case study
+
+
+```{r, echo=FALSE}
+
+is <- mnist_27$index_train[c(which.min(mnist_27$train$x_1), which.max(mnist_27$train$x_1))]
+titles <- c("smallest","largest")
+tmp <- lapply(1:2, function(i){
+    expand.grid(Row=1:28, Column=1:28) %>%  
+      mutate(label=titles[i],  
+             value = mnist$train$images[is[i],])
+})
+tmp <- Reduce(rbind, tmp)
+tmp %>% ggplot(aes(Row, Column, fill=value)) + 
+    geom_raster() + 
+    scale_y_reverse() +
+    scale_fill_gradient(low="white", high="black") +
+    facet_grid(.~label) + 
+    geom_vline(xintercept = 14.5) +
+    geom_hline(yintercept = 14.5)
+```
+
+## Case study
+
+```{r, echo=FALSE}
+is <- mnist_27$index_train[c(which.min(mnist_27$train$x_2), which.max(mnist_27$train$x_2))]
+titles <- c("smallest","largest")
+tmp <- lapply(1:2, function(i){
+    expand.grid(Row=1:28, Column=1:28) %>%  
+      mutate(label=titles[i],  
+             value = mnist$train$images[is[i],])
+})
+tmp <- Reduce(rbind, tmp)
+tmp %>% ggplot(aes(Row, Column, fill=value)) + 
+    geom_raster() + 
+    scale_y_reverse() +
+    scale_fill_gradient(low="white", high="black") +
+    facet_grid(.~label) + 
+    geom_vline(xintercept = 14.5) +
+    geom_hline(yintercept = 14.5)
+```
+
+## Case study: Let' try logistic regression
+
+- The model is simply:
+
+$$
+p(x_1, x_2) = \mbox{Pr}(Y=1 \mid X_1=x_1 , X_2 = x_2) = 
+g^{-1}(\beta_0 + \beta_1 x_1 + \beta_2 x_2)
+$$
+
+- with $g^{-1}$ the inverse of the logistic function: $g^{-1}(x) = \exp(x)/\{1+\exp(x)\}$.
+
+## Case study
+
+- We fit it like this:
+
+
+```{r}
+fit_glm <- glm(y ~ x_1 + x_2, data=mnist_27$train, family="binomial")
+```
+
+## Case study: Decision rule
+
+
+
+```{r}
+p_hat <- predict(fit_glm, newdata = mnist_27$test)
+y_hat <- factor(ifelse(p_hat > 0.5, 7, 2))
+confusionMatrix(data = y_hat, reference = mnist_27$test$y)
+```
+
+## Case study: True conditional probability
+
+
+```{r, echo=FALSE}
+mnist_27$true_p %>% ggplot(aes(x_1, x_2, z=p, fill=p)) +
+  geom_raster() +
+  scale_fill_gradientn(colors=c("#F8766D","white","#00BFC4")) +
+  stat_contour(breaks=c(0.5),color="black")
+```
+
+## Case study
+
+- First note that with logistic regression $\hat{p}(x,y)$ has to be a plane and as result the
+boundary defined by the decision rule is given by 
+
+$$ \hat{p}(x,y) = 0.5$$
+
+## Case study
+
+which implies the boundary can't be anything other than straight line:
+
+$$
+g^{-1}(\hat{\beta}_0 + \hat{\beta}_1 x_1 + \hat{\beta}_2 x_2) = 0.5 \implies \\
+\hat{\beta}_0 + \hat{\beta}_1 x_1 + \hat{\beta}_2 x_2 = g(0.5) = 0 \implies \\
+x_2 = -\hat{\beta}_0/\hat{\beta}_2 + -\hat{\beta}_1/\hat{\beta}_2 x_1
+$$
+
+## Case study
+
+- Here is a visual representation of $\hat{p}(x_1, x_2)$:
+
+```{r, echo=FALSE}
+p_hat <- predict(fit_glm, newdata = mnist_27$true_p, type = "response")
+mnist_27$true_p %>% mutate(p_hat = p_hat) %>%
+  ggplot(aes(x_1, x_2,  z=p_hat, fill=p_hat)) +
+  geom_raster() +
+  scale_fill_gradientn(colors=c("#F8766D","white","#00BFC4")) +
+  stat_contour(breaks=c(0.5),color="black") 
+```
+
+## Case study
+
+
+```{r, echo=FALSE}
+p_hat <- predict(fit_glm, newdata = mnist_27$true_p)
+mnist_27$true_p %>% mutate(p_hat = p_hat) %>%
+  ggplot() +
+  stat_contour(aes(x_1, x_2, z=p_hat), breaks=c(0.5), color="black") + 
+  geom_point(mapping = aes(x_1, x_2, color=y), data = mnist_27$test) 
+```
+
+## Case study
+
+- We need something more flexible.
+
+- A method that permits estimates with shapes other than a plane.
+
+
+## Nearest Neighbors
+
+- K-nearest neighbors (kNN) is similar to bin smoothing, but it is easier to adapt to multiple dimensions.
+
+- We first define the distance between all observations based on the features.
+
+- Basically, for any point $(x_1,x_2)$ for which we want an estimate of $p(x_1, x_2)$, we look for the $k$ nearest points and then take an average of these points.
+
+## Nearest Neighbors
+
+```{r, eval=FALSE}
+knn_fit <- knn3(y ~ ., data = mnist_27$train)
+```
+
+## Nearest Neighbors
+
+- For this function we also need to pick a parameter: the number of neighbors to include.
+
+- Let's start with the default $k=5$. 
+
+```{r}
+knn_fit <- knn3(y ~ ., data = mnist_27$train, k = 5)
+```
+
+## Nearest Neighbors
+
+```{r}
+y_hat_knn <- predict(knn_fit, mnist_27$test, type = "class")
+confusionMatrix(data = y_hat_knn, reference = mnist_27$test$y)$overall["Accuracy"]
+```
+
+
+```{r, echo=FALSE}
+# We use this function to plot the estimated conditional probabilities
+plot_cond_prob <- function(p_hat=NULL){
+  tmp <- mnist_27$true_p
+  if(!is.null(p_hat)){
+    tmp <- mutate(tmp, p=p_hat)
+  }
+  tmp %>% ggplot(aes(x_1, x_2, z=p, fill=p)) +
+  geom_raster(show.legend = FALSE) +
+  scale_fill_gradientn(colors=c("#F8766D","white","#00BFC4")) +
+  stat_contour(breaks=c(0.5),color="black")
+}
+```
+
+## Nearest Neighbors
+
+```{r knn-fit, echo=FALSE, message=FALSE, warning=FALSE}
+p1 <- plot_cond_prob() + ggtitle("True conditional probability")
+
+p2 <- plot_cond_prob(predict(knn_fit, mnist_27$true_p)[,2]) +
+  ggtitle("knn-5 estimate")
+library(gridExtra)
+
+grid.arrange(p1, p2, nrow=1)
+``` 
+
+## Nearest Neighbors
+```{r}
+y_hat_knn <- predict(knn_fit, mnist_27$train, type = "class")
+confusionMatrix(data = y_hat_knn, 
+                reference = mnist_27$train$y)$overall["Accuracy"]
+
+y_hat_knn <- predict(knn_fit, mnist_27$test, type = "class")
+confusionMatrix(data = y_hat_knn, reference = mnist_27$test$y)$overall["Accuracy"]
+```
+
+## Over Training
+
+
+```{r}
+knn_fit_1 <- knn3(y ~ ., data = mnist_27$train, k = 1)
+y_hat_knn_1 <- predict(knn_fit_1, mnist_27$train, type = "class")
+confusionMatrix(data=y_hat_knn_1, 
+                reference=mnist_27$train$y)$overall["Accuracy"]
+```
+
+## Over Training
+
+```{r}
+y_hat_knn_1 <- predict(knn_fit_1, mnist_27$test, type = "class")
+confusionMatrix(data=y_hat_knn_1, reference=mnist_27$test$y)$overall["Accuracy"]
+```
+
+## Over Training
+
+```{r knn-1-overfit, echo=FALSE}
+p1 <- mnist_27$true_p %>% 
+  mutate(knn = predict(knn_fit_1, newdata = .)[,2]) %>%
+  ggplot() +
+  geom_point(data = mnist_27$train, aes(x_1, x_2, color= y), pch=21) +
+  scale_fill_gradientn(colors=c("#F8766D","white","#00BFC4")) +
+  stat_contour(aes(x_1, x_2, z = knn), breaks=c(0.5), color="black") +
+  ggtitle("Train set")
+
+p2 <- mnist_27$true_p %>% 
+  mutate(knn = predict(knn_fit_1, newdata = .)[,2]) %>%
+  ggplot() +
+  geom_point(data = mnist_27$test, aes(x_1, x_2, color= y), 
+             pch=21, show.legend = FALSE) +
+  scale_fill_gradientn(colors=c("#F8766D","white","#00BFC4")) +
+  stat_contour(aes(x_1, x_2, z = knn), breaks=c(0.5), color="black") +
+  ggtitle("Test set")
+
+grid.arrange(p1, p2, nrow=1)
+``` 
+
+## Over-smoothing
+
+- Although not as badly, we saw that with $k=5$ we also over-trained.
+
+- So we should consider a larger $k$.
+
+## Over-smoothing
+
+- Let's try, as an example, a much larger number: $k=401$. 
+
+```{r}
+knn_fit_401 <- knn3(y ~ ., data = mnist_27$train, k = 401)
+y_hat_knn_401 <- predict(knn_fit_401, mnist_27$test, type = "class")
+confusionMatrix(data=y_hat_knn_401, reference=mnist_27$test$y)$overall["Accuracy"]
+```
+
+## Over-smoothing
+
+```{r, echo=FALSE}
+p1 <- plot_cond_prob(predict(fit_glm, mnist_27$true_p)) +
+  ggtitle("Logistic regression")
+
+p2 <- plot_cond_prob(predict(knn_fit_401, mnist_27$true_p)[,2]) +
+  ggtitle("knn-401")
+  
+grid.arrange(p1, p2, nrow=1)
+```
+
+## Let's pick a $k$
+
+
+```{r, warning=FALSE, message=FALSE}
+library(purrr)
+ks <- seq(3, 151, 2)
+accuracy <- map_df(ks, function(k){
+  fit <- knn3(y ~ ., data = mnist_27$train, k = k)
+
+  y_hat <- predict(fit, mnist_27$train, type = "class")
+  cm_train <- confusionMatrix(data = y_hat, reference = mnist_27$train$y)
+  train_error <- cm_train$overall["Accuracy"]
+
+  y_hat <- predict(fit, mnist_27$test, type = "class")
+  cm_test <- confusionMatrix(data = y_hat, reference = mnist_27$test$y)
+  test_error <- cm_test$overall["Accuracy"]
+
+  tibble(train = train_error, test = test_error)
+})
+```
+
+## Let's pick a $k$
+
+```{r accuracy-vs-k-knn, echo=FALSE}
+accuracy %>% mutate(k = ks) %>%
+  gather(set, accuracy, -k) %>%
+  mutate(set = factor(set, levels = c("train", "test"))) %>%
+  ggplot(aes(k, accuracy, color = set)) +
+  geom_line() +
+  geom_point()
+```
+
+## Let's pick a $k$
+
+- Is this an good estimate of accuracy?
+```{r}
+ks[which.max(accuracy$test)]
+max(accuracy$test)
+```
+
+## Cross-validation
+
+```{r, include=FALSE}
+if(knitr::is_html_output()){
+  knitr::opts_chunk$set(out.width = "500px", out.extra='style="display: block; margin-left: auto; margin-right: auto; background-color: #000; padding:3px;"')
+  } else{
+  knitr::opts_chunk$set(out.width = "5in")
+}
+```
+
+
+$$
+\mbox{MSE} = \mbox{E}\left\{ \frac{1}{N}\sum_{i=1}^N (\hat{Y}_i - Y_i)^2 \right\}
+$$
+
+When all we have at our disposal is one dataset, we can estimate the MSE with the observed MSE like this:
+
+$$
+\hat{\mbox{MSE}} = \frac{1}{N}\sum_{i=1}^N (\hat{y}_i - y_i)^2
+$$
+These two are often referred to as the _true error_ and _apparent error_ respectively.
+
+
+## Cross-validation
+
+There are two important characteristics of the apparent error we should always keep in mind:
+
+1. Because our data is random, the apparent error is a random variable. For example, the dataset we have may be a random sample from a larger population. An algorithm may have a lower apparent error than another algorithm due to luck.
+
+2. If we train an algorithm on the same dataset that we use to compute the apparent error, we might be overtraining. In general, when we do this, the apparent error will be an underestimate of the true error. We will see an extreme example of this with k nearest neighbors.
+
+## Cross-validation
+
+Thinks of the true error as the average MSE after running the exercise over and over
+
+$$
+\frac{1}{B} \sum_{b=1}^B \frac{1}{N}\sum_{i=1}^N \left(\hat{y}_i^b - y_i^b\right)^2 
+$$
+
+## K-fold cross validation
+
+
+```{r, echo=FALSE}
+knitr::include_graphics("img//cv-1.png")
+```
+
+
+## K-fold cross validation
+
+```{r, echo=FALSE}
+knitr::include_graphics("img//cv-2.png")
+```
+
+## K-fold cross validation
+
+```{r, echo=FALSE}
+knitr::include_graphics("img//cv-3.png")
+```
+
+## K-fold cross validation
+
+$$
+\mbox{MSE}(\lambda) = \frac{1}{B} \sum_{b=1}^B \frac{1}{N}\sum_{i=1}^N \left(\hat{y}_i^b(\lambda) - y_i^b\right)^2 
+$$
+
+## K-fold cross validation
+
+
+```{r, echo=FALSE}
+knitr::include_graphics("img//cv-4.png")
+```
+
+## K-fold cross validation
+
+Now we can fit the model in the training set, then compute the apparent error on the independent set:
+
+$$
+\hat{\mbox{MSE}}_b(\lambda) = \frac{1}{M}\sum_{i=1}^M \left(\hat{y}_i^b(\lambda) - y_i^b\right)^2 
+$$
+
+## K-fold cross validation
+
+```{r, echo=FALSE}
+knitr::include_graphics("img//cv-5.png")
+```
+
+## K-fold cross validation
+
+Now we repeat the calculation above for each of these sets $b=1,\dots,K$ and obtain $\hat{\mbox{MSE}}_1(\lambda),\dots, \hat{\mbox{MSE}}_K(\lambda)$. Then, for our final estimate, we compute the average:
+
+$$
+\hat{\mbox{MSE}}(\lambda) = \frac{1}{B} \sum_{b=1}^K \hat{\mbox{MSE}}_b(\lambda)
+$$
+
+## K-fold cross validation
+
+```{r, echo=FALSE}
+knitr::include_graphics("img//cv-6.png")
+```
+
+## K-fold cross validation
+
+```{r, echo=FALSE}
+knitr::include_graphics("img//cv-7.png")
+```
+
+## K-fold cross validation
+
+```{r, echo=FALSE}
+knitr::include_graphics("img//cv-8.png")
+```
+
+## K-fold cross validation
+
+- Now how do we pick the cross validation $K$? 
+- Large values of $K$ are preferable because the training data better imitates the original dataset. 
+- However, larger values of $K$ will have much slower computation time: for example, 100-fold cross validation will be 10 times slower than 10-fold cross validation. 
+- For this reason, the choices of $K=5$ and $K=10$ are popular.
+
+## Bootstrap cross validation
+
+One way we can improve the variance of our final estimate is to take more samples. To do this, we would no longer require the training set to be partitioned into non-overlapping sets. Instead, we would just pick $K$ sets of some size at random.
+
+
+## Chaning the $k$ in knn
+
+- So how do we pick $k$? 
+
+- Let's repeat what we did above but for different values of $k$:
+
+```{r}
+ks <- seq(3, 251, 2)
+```
+
+## Chaning the $k$ in knn
+
+- Now we use the `map_df` function to repeat the above for each one.
+
+- For comparative purposes we will compute the accuracy by using both the training set (incorrect) and the test set (correct):
+
+
+## Chaning the $k$ in knn
+
+
+```{r}
+train_knn <- train(y ~ ., method = "knn",
+                   data = mnist_27$train,
+                   tuneGrid = data.frame(k = seq(9, 71, 2)))
+```
+
+## Chaning the $k$ in knn
+
+We saw that the parameter that maximized the estimated accuracy was:
+
+```{r}
+train_knn$bestTune
+```
+
+## Chaning the $k$ in knn
+
+This model results improves the accuracy over regression and logistic regression.
+
+```{r}
+confusionMatrix(predict(train_knn, mnist_27$test, type = "raw"),
+                mnist_27$test$y)$overall["Accuracy"]
+```
+
+## Chaning the $k$ in knn
+
+
+```{r best-knn-fit, echo=FALSE}
+p1 <- plot_cond_prob() + ggtitle("True conditional probability")
+
+p2 <- plot_cond_prob(predict(train_knn, newdata = mnist_27$true_p, type = "prob")[,2]) +
+  ggtitle("kNN")
+
+grid.arrange(p2, p1, nrow=1)
+```
+
+
+## Learn more
+
+Many resources. Here are two:
+
+- An Introduction to Statistical Learning
+
+- https://rafalab.github.io/dsbook/ and HarvardX course
+
+
+

@@ -1,0 +1,370 @@
+---
+title: "Data Science for Statisticians: Data wrangling"
+author: "Rafael A. Irizarry"
+date: "3/13/2019"
+output: 
+  ioslides_presentation: 
+    fig_caption: no
+    fig_height: 4
+    fig_width: 7
+    beamer_presentation: default
+  slidy_presentation: default
+---
+
+## Wrangling data into tidy format
+
+We will demonstrate with this example:
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse) 
+library(dslabs)
+path <- system.file("extdata", package="dslabs")
+filename <- file.path(path,  "fertility-two-countries-example.csv")
+wide_data <- read_csv(filename)
+```
+
+
+## `gather`
+
+```{r}
+new_tidy_data <- wide_data %>% gather(year, fertility, `1960`:`2015`)
+```
+
+
+## `gather`
+
+We can see that the data have been converted to tidy format with columns `year` and `fertility`:
+
+
+```{r}
+head(new_tidy_data)
+```
+
+
+## `gather`
+
+A somewhat quicker way to write this code is to specify which column will **not** be gathered:
+
+```{r}
+new_tidy_data <- wide_data %>%
+  gather(year, fertility, -country)
+```
+
+## `gather`
+
+The `new_tidy_data` object looks like the original `tidy_data` we showed in a previous lecture:
+
+```{r}
+data("gapminder")
+tidy_data <- gapminder %>% 
+  filter(country %in% c("South Korea", "Germany") & 
+           !is.na(fertility)) %>%
+  select(country, year, fertility)
+```
+
+## `gather`
+
+With just one minor difference. Can you spot it?
+
+```{r}
+class(tidy_data$year)
+class(new_tidy_data$year)
+```
+
+## `gather`
+
+We can use the `convert` function:
+
+```{r}
+new_tidy_data <- wide_data %>%
+  gather(year, fertility, -country, convert = TRUE)
+class(new_tidy_data$year)
+```
+
+## `tidy` makes ggplot2 easier to use
+
+```{r fertility-year-check}
+new_tidy_data %>% ggplot(aes(year, fertility, color = country)) +
+  geom_point()
+```
+
+## `spread`
+
+
+```{r}
+new_wide_data <- new_tidy_data %>% spread(year, fertility)
+select(new_wide_data, country, `1960`:`1967`)
+```
+
+## `gather` and `spread`
+
+```{r, echo=FALSE, out.width="100%"}
+knitr::include_graphics("https://rafalab.github.io/dsbook/wrangling/img/gather-spread.png")
+```
+
+(Source: RStudio)
+
+## `separate`
+
+We use a second example:
+
+```{r, message=FALSE}
+path <- system.file("extdata", package = "dslabs")
+filename <- file.path(path,
+                      "life-expectancy-and-fertility-two-countries-example.csv")
+
+raw_dat <- read_csv(filename)
+select(raw_dat, 1:5)
+```
+
+
+## Example
+
+```{r}
+dat <- raw_dat %>% gather(key, value, -country)
+head(dat)
+```
+
+## Example
+
+```{r}
+dat$key[1:5]
+```
+
+## Example
+
+```{r, eval=FALSE}
+dat %>% separate(key, c("year", "variable"), "_")
+```
+
+## Example
+
+```{r}
+dat %>% separate(key, c("year", "variable"))
+```
+
+## Example 
+```{r}
+dat %>% separate(key, c("year", "first_variable",
+                        "second_variable"), 
+                 fill = "right")
+```
+
+## Example
+
+```{r}
+dat %>% separate(key, c("year", "variable"), extra = "merge")
+```
+
+## Example
+
+```{r}
+dat %>% 
+  separate(key, c("year", "variable"), extra = "merge") %>%
+  spread(variable, value) 
+```
+
+## `unite`
+
+```{r}
+dat %>% 
+  separate(key, 
+           c("year", "first_variable", "second_variable"), 
+           fill = "right")
+```
+
+## `unite`
+
+```{r}
+dat %>% 
+  separate(key, 
+           c("year", "first_variable", "second_variable"), 
+           fill = "right") %>%
+  unite(variable, first_variable, second_variable, sep="_") %>%
+  spread(variable, value) %>%
+  rename(fertlity = fertility_NA)
+```
+
+## Joining tables
+
+We want to combine this table
+
+```{r, warning=FALSE, message=FALSE}
+data(murders)
+head(murders)
+```
+
+## Joining tables
+
+With this table
+
+```{r}
+data(polls_us_election_2016)
+head(results_us_election_2016)
+```
+
+## We can't concatenate
+
+```{r}
+identical(results_us_election_2016$state, murders$state)
+```
+
+
+## Joins 
+
+Similar to SQL:
+
+- left join
+- right join
+- inner join
+- full join
+
+## Joins 
+
+```{r}
+tab <- left_join(murders, results_us_election_2016, by = "state") %>% select(-others)
+head(tab)
+```
+
+## Plot
+
+```{r, eval=FALSE, message=FALSE, warning=FALSE}
+library(ggrepel)
+tab %>% ggplot(aes(population/10^6, electoral_votes, label = abb)) +
+  geom_point() +
+  geom_text_repel() + 
+  scale_x_continuous(trans = "log2") +
+  scale_y_continuous(trans = "log2") +
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+## Plot
+
+```{r ev-vs-population, echo=FALSE, message=FALSE, warning=FALSE}
+library(ggrepel)
+tab %>% ggplot(aes(population/10^6, electoral_votes, label = abb)) +
+  geom_point() +
+  geom_text_repel() + 
+  scale_x_continuous(trans = "log2") +
+  scale_y_continuous(trans = "log2") +
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+## More examples
+
+```{r}
+tab_1 <- slice(murders, 1:6) %>% select(state, population)
+tab_1
+```
+
+## More examples
+
+```{r}
+tab_2 <- results_us_election_2016 %>% 
+  filter(state%in%c("Alabama", "Alaska", "Arizona", 
+                    "California", "Connecticut","Delaware")) %>% 
+  select(state, electoral_votes)
+tab_2
+```
+
+
+
+## Left join
+
+
+```{r}
+left_join(tab_1, tab_2, by = "state")
+```
+
+## Examples with the pipe
+
+```{r, eval=FALSE}
+tab_1 %>% left_join(tab_2, by = "state")
+```
+
+
+## Right join
+
+
+```{r}
+tab_1 %>% right_join(tab_2, by = "state")
+```
+
+## Inner join
+
+```{r}
+inner_join(tab_1, tab_2, by = "state")
+```
+
+## Full join
+
+
+```{r}
+full_join(tab_1, tab_2, by = "state")
+```
+
+## Semi join
+
+
+```{r}
+semi_join(tab_1, tab_2, by = "state")
+```
+
+
+## Anti join
+
+
+```{r}
+anti_join(tab_1, tab_2, by = "state")
+```
+
+## Joins
+
+
+```{r, echo=FALSE, out.width ="40%"}
+knitr::include_graphics("https://rafalab.github.io/dsbook/wrangling/img/joins.png")
+```
+
+(Source: RStudio)
+
+## Set operators
+ 
+Tidyverse offers versions for tables of operators such as:
+
+- `intersect`
+- `union` 
+- `setdiff`
+- `setequal`. 
+
+## Intersect
+```{r}
+tab_1 <- tab[1:5,]
+tab_2 <- tab[3:7,]
+dplyr::intersect(tab_1, tab_2)
+```
+
+
+## Union
+
+```{r}
+tab_1 <- tab[1:5,]
+tab_2 <- tab[3:7,]
+dplyr::union(tab_1, tab_2)
+```
+
+
+## `setdiff`
+
+
+```{r}
+tab_1 <- tab[1:5,]
+tab_2 <- tab[3:7,]
+dplyr::setdiff(tab_1, tab_2)
+```
+
+## `setequal`
+
+
+```{r}
+dplyr::setequal(tab_1, tab_2)
+```
