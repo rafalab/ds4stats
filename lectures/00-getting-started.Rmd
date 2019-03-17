@@ -65,3 +65,40 @@ list.files(".")
 path <- getwd()
 list.files(path)
 ```
+
+
+## RStudio
+
+
+```{r}
+knitr::include_graphics("https://rafalab.github.io/dsbook/R/img/rstudio.png")
+```
+
+
+## R markdown
+
+```{r, echo=FALSE}
+knitr::include_graphics("https://rafalab.github.io/dsbook/productivity/img/windows-screenshots/VirtualBox_Windows-7-Enterprise_23_03_2018_14_53_18.png")
+```
+
+## R chunks in R markdown
+
+```{r, echo=FALSE}
+knitr::include_graphics("https://rafalab.github.io/dsbook/productivity/img/windows-screenshots/VirtualBox_Windows-7-Enterprise_23_03_2018_14_53_20.png")
+```
+
+## Running R chunks
+
+- To run a command on Mac: command + return
+- To run a command on Windows: control + enter
+- To run an entire chunk on Mac: command + shift + return
+- To run a command on Windows: Control + Shift + Enter
+
+## Starting an R chunk
+
+- Mac: command + option + I
+- Windows: Control + Alt + I
+
+## Keyboard Shortcuts
+
+- [https://support.rstudio.com/hc/en-us/articles/200711853-Keyboard-Shortcuts](https://support.rstudio.com/hc/en-us/articles/200711853-Keyboard-Shortcuts)
