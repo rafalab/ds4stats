@@ -365,6 +365,43 @@ class(s)</pre>
 ## 1 Female    64.9  3.76
 ## 2 Male      69.3  3.61</pre>
 
+</article></slide><slide class=""><hgroup><h2>The dot operator</h2></hgroup><article  id="the-dot-operator">
+
+<ul>
+<li><p>When using the pipe, the object being passed by the expression on the left side of the pipe can be accessed via <code>.</code></p></li>
+<li><p>Here is an example that is equivalent to pull:</p></li>
+</ul>
+
+<pre class = 'prettyprint lang-r'>s %&gt;% .$average</pre>
+
+<pre >## [1] 64.93942</pre>
+
+</article></slide><slide class=""><hgroup><h2><code>do</code></h2></hgroup><article  id="do">
+
+<ul>
+<li><p>We saw that summarize does not permit the use of functions that return more than one scaler</p></li>
+<li><p>One way to apply such function is with <code>do</code></p></li>
+<li><p>Think of <code>do</code> as a connection between R base and the tidyverse.</p></li>
+<li><p>General idea, write a function that returns what you want in a data frame, then call it with do.</p></li>
+</ul>
+
+</article></slide><slide class=""><hgroup><h2><code>do</code></h2></hgroup><article  id="do-1">
+
+<pre class = 'prettyprint lang-r'>qs &lt;- function(x){
+  res &lt;- quantile(x,  c(1,2,3) / 4)
+  data_frame(q25 = res[1], median = res[2],  q75 = res[3])
+}
+heights %&gt;% 
+  group_by(sex) %&gt;%
+  do(qs(.$height))</pre>
+
+<pre >## # A tibble: 2 x 4
+## # Groups:   sex [2]
+##   sex      q25 median   q75
+##   &lt;fct&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;
+## 1 Female    63   65.0    67
+## 2 Male      67   69      72</pre>
+
 </article></slide><slide class=""><hgroup><h2>Sorting data frames</h2></hgroup><article  id="sorting-data-frames">
 
 <pre class = 'prettyprint lang-r'>murders %&gt;%
@@ -560,7 +597,48 @@ class(grades$names)</pre>
 
 <pre class = 'prettyprint lang-r'>as_tibble(grades) %&gt;% class()</pre>
 
-<pre >## [1] &quot;tbl_df&quot;     &quot;tbl&quot;        &quot;data.frame&quot;</pre></article></slide>
+<pre >## [1] &quot;tbl_df&quot;     &quot;tbl&quot;        &quot;data.frame&quot;</pre>
+
+</article></slide><slide class=""><hgroup><h2>Conditionals</h2></hgroup><article  id="conditionals">
+
+<ul>
+<li><p>You should be familiar with the <code>ifelse</code> function. But let&#39;s review it as it is very useful in the tidyverse</p></li>
+<li><p><code>ifelse</code> vectorizes conditional assignments. Here is an example</p></li>
+</ul>
+
+<pre class = 'prettyprint lang-r'>x &lt;- seq(-5, 5)
+ifelse(x&gt;0, &quot;positive&quot;, &quot;non-positive&quot;)</pre>
+
+<pre >##  [1] &quot;non-positive&quot; &quot;non-positive&quot; &quot;non-positive&quot; &quot;non-positive&quot;
+##  [5] &quot;non-positive&quot; &quot;non-positive&quot; &quot;positive&quot;     &quot;positive&quot;    
+##  [9] &quot;positive&quot;     &quot;positive&quot;     &quot;positive&quot;</pre>
+
+</article></slide><slide class=""><hgroup><h2>Conditionals</h2></hgroup><article  id="conditionals-1">
+
+<ul>
+<li>The tidyverse offers another useful tool: <code>case_when</code></li>
+</ul>
+
+<pre class = 'prettyprint lang-r'>x &lt;- seq(-5, 5)
+case_when(x &gt; 0 ~ &quot;positive&quot;,
+          x &lt; 0 ~ &quot;negative&quot;,
+          TRUE ~ &quot;zero&quot;)</pre>
+
+<pre >##  [1] &quot;negative&quot; &quot;negative&quot; &quot;negative&quot; &quot;negative&quot; &quot;negative&quot; &quot;zero&quot;    
+##  [7] &quot;positive&quot; &quot;positive&quot; &quot;positive&quot; &quot;positive&quot; &quot;positive&quot;</pre>
+
+</article></slide><slide class=""><hgroup><h2>Remapping</h2></hgroup><article  id="remapping">
+
+<p>The <code>recode</code> function is a related useful function for dealing with factor names.</p>
+
+<pre class = 'prettyprint lang-r'>x &lt;- seq(-5, 5)
+recode(sign(x), &quot;1&quot; = &quot;positive&quot;, &quot;0&quot; = &quot;zero&quot;, &quot;-1&quot; = &quot;nonpositive&quot;)</pre>
+
+<pre >##  [1] &quot;nonpositive&quot; &quot;nonpositive&quot; &quot;nonpositive&quot; &quot;nonpositive&quot; &quot;nonpositive&quot;
+##  [6] &quot;zero&quot;        &quot;positive&quot;    &quot;positive&quot;    &quot;positive&quot;    &quot;positive&quot;   
+## [11] &quot;positive&quot;</pre>
+
+<p>Mainly useful for changing codes to actual meaningful level names.</p></article></slide>
 
 
   <slide class="backdrop"></slide>
