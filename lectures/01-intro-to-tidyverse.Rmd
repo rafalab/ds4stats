@@ -207,8 +207,6 @@ heights %>%
 Error in summarise_impl(.data, dots) : 
   Column `qs` must be length 1 (a summary value), not 3
 ```
-
-
 ## `pull`
 
 The `us_murder_rate` object defined above represents just one number. Yet we are storing it in a data frame:
@@ -226,8 +224,8 @@ class(s)
 s %>% pull(average)
 ```
 
-## Group then summarize
 
+## Group then summarize
 
 ```{r}
 heights %>% group_by(sex)
@@ -245,8 +243,39 @@ heights %>%
   summarize(average = mean(height), sd = sd(height))
 ```
 
-## Sorting data frames
+## The dot operator
 
+- When using the pipe, the object being passed by the expression on the left side of the pipe can be accessed via `.`
+
+- Here is an example that is equivalent to pull:
+
+```{r}
+s %>% .$average
+```
+
+## `do`
+
+- We saw that summarize does not permit the use of functions that return more than one scaler
+
+- One way to apply such function is with `do`
+
+- Think of `do` as a connection between R base and the tidyverse.
+
+- General idea, write a function that returns what you want in a data frame, then call it with do.
+
+## `do`
+
+```{r}
+qs <- function(x){
+  res <- quantile(x,  c(1,2,3) / 4)
+  data_frame(q25 = res[1], median = res[2],  q75 = res[3])
+}
+heights %>% 
+  group_by(sex) %>%
+  do(qs(.$height))
+```
+
+## Sorting data frames
 
 ```{r}
 murders %>%
@@ -376,3 +405,36 @@ class(grades$names)
 as_tibble(grades) %>% class()
 ```
 
+## Conditionals
+
+- You should be familiar with the `ifelse` function. But let's review it as it is very useful in the tidyverse
+
+- `ifelse` vectorizes conditional assignments. Here is an example
+
+```{r}
+x <- seq(-5, 5)
+ifelse(x>0, "positive", "non-positive")
+```
+
+## Conditionals
+
+- The tidyverse offers another useful tool: `case_when`
+
+```{r}
+x <- seq(-5, 5)
+case_when(x > 0 ~ "positive",
+          x < 0 ~ "negative",
+          TRUE ~ "zero")
+
+```
+
+## Remapping
+
+The `recode` function is a related useful function for dealing with factor names.
+
+```{r}
+x <- seq(-5, 5)
+recode(sign(x), "1" = "positive", "0" = "zero", "-1" = "nonpositive")
+```
+
+Mainly useful for changing codes to actual meaningful level names.

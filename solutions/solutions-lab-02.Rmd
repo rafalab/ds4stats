@@ -1,0 +1,297 @@
+---
+title: "Identifying DNA fragment that increases part 2: data visualization"
+output: github_document
+---
+
+## Data visualization
+
+In the previous lab we did this:
+
+```{r, warning=FALSE, message=FALSE}
+library(tidyverse)
+load("../rdas/mouse.rda")
+dat <- mutate(dat, fragment = recode(DNA, 
+                                "1"="141G6", 
+                                "2"="152F7", 
+                                "3"="230E8", 
+                                "4"="285E6")) %>% 
+  mutate(fragment = ifelse(tg == 0, "No trisomy", fragment)) 
+```
+
+
+### Dynamite plot
+
+
+This is what the dynamite plot would look like:
+
+```{r, echo=FALSE}
+dat %>% group_by(fragment) %>% 
+  summarize(average = mean(weight), se=sd(weight)/sqrt(n())) %>%
+  ggplot(aes(fragment, average)) + 
+  geom_errorbar(aes(ymin = average - se, ymax = average+se), width = 0.25) +
+  geom_bar(stat = "identity", width=0.5, fill=4, col = 1) +
+  ylab("Outcome") +
+  xlab("") 
+```
+
+Does this make sense? In the next section we demonstrate how data exploration allows us to detect a problem. We also learn how to make publication ready plots.
+
+
+### Data exploration to identify outliers
+
+A problem with the summary statistics and the barplot above is that it only shows the average and we learn little about the distribution of the data. Use the `geom_boxplot` function to show the five number summary. Do you see a problem? What is it?
+
+```{r}
+dat %>% ggplot(aes(fragment, weight)) + geom_boxplot()
+```
+
+We know that a 1,000 gram mice does not exist. In fact 100 grams is already a huge mouse. Use filter to show the data from the mice weighing more than 100 grams. 
+
+```{r}
+filter(dat, weight > 100) 
+```
+
+What are the weights of these supposed large mice?
+
+```{r}
+filter(dat, weight > 100) %>% pull(weight)
+```
+
+An unfortunate common practice is to use the number 999 to denote missing data. The recommended practice is to acutely type NA. Use the filter function to remove all the rows with these missing values, then remake the figure and recompute the averages and standard errors. The new summaries should make much more sense.
+
+
+```{r}
+dat <- filter(dat, weight != 999)
+
+dat %>% ggplot(aes(fragment, weight)) + geom_boxplot()
+
+dat %>% group_by(fragment) %>% 
+  summarize(average = mean(weight), se = sd(weight)/sqrt(n()))
+```
+
+
+## Data exploration to help answer scientific question
+
+Let us start by creating a boxplot of weight vs fragments:
+
+```{r}
+dat %>% ggplot(aes(fragment, weight)) + geom_boxplot()
+```
+
+We prefer showing the control data first. To achieve this we need to 
+let R know that  `No trisomy` is the reference. We can do this by converting the variable into a factor and using the `relevel` function. Like this:
+
+```{r}
+dat <- mutate(dat, fragment = factor(fragment)) %>% 
+       mutate(fragment = relevel(fragment, ref = "No trisomy"))
+
+dat %>% ggplot(aes(fragment, weight)) + geom_boxplot()
+```
+
+Notice that the boxplot do show evidence of asymmetry. Use the `geom_point()` function to add the points to the boxplot.
+
+```{r}
+dat %>% ggplot(aes(fragment, weight)) + geom_boxplot() + geom_point()
+```
+
+The points are all cluster together and its hard to see them. We can use `geom_jitter` instead of `geom_point` to fix this:
+
+```{r}
+dat %>% ggplot(aes(fragment, weight)) + geom_boxplot() + geom_jitter()
+```
+
+What did `geom_jitter` do? Let's make the spread smaller and alpha-blend the data points:
+
+```{r}
+dat %>% ggplot(aes(fragment, weight)) +
+  geom_boxplot() + 
+  geom_jitter(width = 0.1, alpha = 0.5)
+```
+
+Do you see anything interesting? Note that an unexpected result is revealed, for some groups it seems like we have a bimodal distribution. We can use histograms to assess this. For example, here is the histogram for the control group:
+
+```{r}
+filter(dat, fragment == "No trisomy") %>%
+  ggplot(aes(weight)) +
+  geom_histogram()
+```
+
+To avoid the warning we can add the argument  `bindwith = 1` and to make it nicer looking we can add `color = "black"`.
+
+```{r}
+filter(dat, fragment == "No trisomy") %>%
+  ggplot(aes(weight)) +
+  geom_histogram(binwidth = 1, color = "black")
+```
+
+There appears to be evidence for two modes. We can also see this using the smooth density estimator using `geom_density`:
+
+```{r}
+filter(dat, fragment == "No trisomy") %>%
+  ggplot(aes(weight)) +
+  geom_density()
+```
+
+Note that this is similar to the histogram above. We can make the density look nicer by adding arguments `fill = 1, alpha = 0.5` to the `geom_density` function and the layer `xlim(c(19,45))`. 
+
+```{r}
+filter(dat, fragment == "No trisomy") %>%
+  ggplot(aes(weight)) +
+  geom_density(fill = 1, alpha = 0.5) + 
+  xlim(c(19,45))
+```
+
+We only looked at the distribution of `weight` in the control group. We can use ridge plots to compare the distribution across all groups. To use ridge plots we need to install and load the `ggridges` functions. Once you install, read the help file for `geom_density_ridges` and make a ridge plot of the densities for each fragment.
+
+```{r}
+library(ggridges)
+dat %>% 
+  ggplot(aes(weight, fragment)) +
+  geom_density_ridges() 
+```
+
+To avoid the overlap you see in the default behavior you can add the argument `scale = 0.9`
+
+```{r}
+library(ggridges)
+dat %>% 
+  ggplot(aes(weight, fragment)) +
+  geom_density_ridges(scale = 0.9) 
+```
+
+We see that for most groups we see two modes. What could explain this?
+
+One variable to consider is sex. We can remake the boxplot with points above but this time use color to distinguish the data from males and females. Edit the code above and use color to distinguish male from female mice.
+
+```{r}
+dat %>% 
+  ggplot(aes(fragment, weight, color = sex)) +
+  geom_boxplot(width = 0.5, color = "grey") + 
+  geom_jitter(width = 0.1, alpha = 0.5)
+```
+
+A problem here is that in our dataset sex is represented with a number! It should be a character or a factor for the legend created by default by `geom_jitter` to make sense. Change sex to a character vector using `mutate` and then remake the plot
+
+```{r}
+dat <- mutate(dat, sex = ifelse(sex == 1, "Male", "Female"))
+
+dat %>% ggplot(aes(fragment, weight, color = sex)) +
+  geom_boxplot(width = 0.5, color = "grey") + 
+  geom_jitter(width = 0.1, alpha = 0.5)
+```
+
+Now that we see that males and females have different distributions, the question arises if the fragment effects are different for males and females. We can explore this by remaking the plot for each sex separately. This can be achieved using the faceting. Use `facet_grid` to make two boxplots, one for males and another for females.
+
+```{r}
+dat %>% ggplot(aes(fragment, weight, color = sex)) +
+  geom_boxplot(width = 0.5, color = "grey") + 
+  geom_jitter(width = 0.1, alpha = 0.5) + 
+  facet_grid(.~sex)
+```
+
+This plot is quite informative. First it shows strong evidence that the 152F7 has an effect on weight, especially on females.
+
+### Themes
+
+A quick pause from the science to add a _theme_. `ggplot` provides the options of changing the general look of plots. There is an entire package, __ggthemes__, dedicated to providing different themes. Here we use the black and white theme:
+
+```{r}
+dat %>% ggplot(aes(fragment, weight, color = sex)) +
+  geom_boxplot(width = 0.5, color = "grey") + 
+  geom_jitter(width = 0.1, alpha = 0.5) + 
+  facet_grid(.~sex) + 
+  theme_bw()
+```
+
+### Is there a cage effect?
+
+Are males and females caged together? Hint: use the `table` function.
+
+```{r}
+with(dat, table(cage, sex))
+```
+
+Is cage confounded with fragment? Make boxplots for the females to answer this question.
+
+```{r}
+dat %>% 
+  filter(sex == "Female") %>%
+  mutate(cage = factor(cage)) %>%
+  ggplot(aes(cage, weight, color = fragment)) +
+  geom_boxplot(width = 0.5, color = "grey") + 
+  geom_jitter(width = 0.1, alpha = 0.5) + 
+  theme_bw()
+```
+
+Remake the boxplots, but ordered the boxplot by their median weight in each cage rather than by cage number.
+
+```{r}
+dat %>% 
+  filter(sex == "Female") %>%
+  mutate(cage = factor(cage)) %>%
+  mutate(cage = reorder(cage, weight, median)) %>%
+  ggplot(aes(cage, weight, color = fragment)) +
+  geom_boxplot(width = 0.5, color = "grey") + 
+  geom_jitter(width = 0.1, alpha = 0.5) + 
+  theme_bw()
+```
+
+Take a closer look. Compare just controls and 152F7. Are trisomic mice higher within each cage? Is what we are seeing really a cage effect?
+
+```{r}
+dat %>% 
+  filter(sex == "Female" & fragment %in% c("No trisomy", "152F7")) %>%
+  mutate(cage = factor(cage)) %>%
+  mutate(cage = reorder(cage, weight, median)) %>%
+  ggplot(aes(cage, weight, color = fragment)) +
+  geom_boxplot(aes(color = fragment), width = 0.5) + 
+  geom_jitter(width = 0.1, alpha = 0.5) + 
+  theme_bw()
+```
+
+### Confounding
+
+For the female mice compute the correlation between blood pressure and weight.
+
+```{r}
+dat %>% filter(sex == "Female") %>%
+  summarize(cor(weight, bp))
+```
+
+Note that the correlation is negative. Does this make sense? Confirm with a plot that there are no outliers driving this result.
+
+```{r}
+dat %>% filter(sex == "Female") %>%
+  ggplot(aes(weight, bp)) + 
+  geom_point(alpha = 0.5)
+```
+
+The plot does confirm that higher weight mice have, on average slightly lower blood pressure. But we do see clusters. What could these be? Use color to decipher what causes the clustering.
+
+```{r}
+dat %>% filter(sex == "Female") %>%
+  ggplot(aes(weight, bp, color = fragment)) + 
+  geom_point(alpha = 0.5)
+```
+
+Now use faceting to plot the scatter plot for each fragment separately.
+
+```{r}
+dat %>% filter(sex == "Female") %>%
+  ggplot(aes(weight, bp)) + 
+  geom_point(alpha = 0.5) + 
+  facet_wrap(fragment ~ .)
+```
+
+We note that the correlation appears positive in each group. Use `group_by` and `summarize` to corroborate this.
+
+```{r}
+dat %>% filter(sex == "Female") %>%
+  group_by(fragment) %>%
+  summarize(cor = cor(weight, bp))
+```
+
+Note: Cases in which the overall correlation is the opposite sign as when looking strata is referred to as Simpsons Paradox.
+
+
+

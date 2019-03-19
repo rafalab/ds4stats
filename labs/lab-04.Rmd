@@ -1,0 +1,27 @@
+---
+title: "Part 4: Machine Learning"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+We will be using the `tidyverse` in this lab. So let's start by loading it.
+
+```{r}
+library(tidyverse)
+```
+
+Load the two digit example data
+
+```{r}
+library(dslabs)
+data("mnist_27")
+```
+
+Build a prediction algorithm on the train set and test on the test set.

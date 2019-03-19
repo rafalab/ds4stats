@@ -1,0 +1,209 @@
+---
+title: "Part 3: Data wrangling"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+	echo = TRUE,
+	message = FALSE,
+	warning = FALSE
+)
+```
+
+We will be using the `tidyverse` in this lab. So let's start by loading it.
+
+```{r}
+library(tidyverse)
+```
+
+
+## Life expectancy and fertility
+
+Read in the `life-expectancy-and-fertility-two-countries-example.csv` following file included in the __dslabs__ package. You find the full path to the file like this:
+
+```{r, message=FALSE}
+path <- system.file("extdata", package = "dslabs")
+filename <- file.path(path, "life-expectancy-and-fertility-two-countries-example.csv")
+```
+
+Now read in the data and save it in an object called `raw_data`.
+
+```{r}
+
+```
+
+Examine the first 10 columns of `raw_dat`.
+
+```{r}
+
+```
+
+Notice that five separate variables are represented here: country, year, fertility and life expectancy. However, the data is not tidy. A tidy dataset should have five columns, one for each variable.
+
+Because two different variable are represented in the column names it will be impossible to wrangle this dataset with just on call to `gather`. So instead, we will form a temporary table with country, a column with column names, and a column with the corresponding values. Use `gather` to create this table, call it `dat` and call the two new columns `key` and `value`.
+
+
+```{r}
+
+```
+
+Now we see that two of our values are stored in the key column: year and the variable name.
+
+```{r}
+dat$key[1:5]
+```
+
+We need to separate the year from the variable name. We can do this with the `separate` function like this:
+
+```{r, eval=FALSE}
+dat %>% separate(key, c("year", "variable"), sep = "_")
+```
+
+Because `_` is the default separator we can can write
+
+```{r}
+dat %>% separate(key, c("year", "variable"))
+```
+
+However, there is a problem with this call because `life_expectancy` is divided into two. We can get around this by using the `extra` argument:
+
+```{r}
+dat %>% separate(key, c("year", "variable"), extra = "merge")
+```
+
+However, we are not  done because we want to have life expectancy and fertility in two different columns. Use the `spread` function to achieve this. 
+
+```{r}
+
+```
+
+
+There is one remaining problem. The year variable is a character and should be numeric. Change the year variable to a numeric and then order the table by year. Call the final table `dat`.
+
+
+```{r}
+
+```
+
+
+## The mouse data (advanced)
+
+In the two previous labs we started with an rda file containing a tidy table. But we are rarely this fortunate. Data often comes formats that are quite far from tidy. The data in that table can be obtained from an excel file which you can find in the data directory:
+
+```{r}
+list.files("../data")
+```
+
+If you have a copy of Microsoft Excel installed on your computer you can inspect the file directly. You will see that the file has two sheets. The first sheet contains the blood pressure measurements and the second sheet contains the weight measurements and other data. In R you can read them in with the `read_excel` function in the __readxl__ package:
+
+```{r, message=FALSE, warning=FALSE}
+library(readxl)
+raw_bp     <- read_excel("../data/mouse-raw-data.xlsx", sheet = 1)
+raw_weight <- read_excel("../data/mouse-raw-data.xlsx", sheet = 2) 
+```
+
+Examine each of these tables so that you are aware what is in the rows and what is in the columns. Hint: Use the `View` function.
+
+```{r eval=FALSE}
+raw_weight %>% View()
+raw_bp %>% View()
+```
+
+We have received a jagged array rather than a table. 
+
+Let's wrangle this dataset into a tidy form.
+
+The general strategy will be to extract four separate tables and then join them together using `rbind` or the equivalent __dplyr__ function `bind_rows`.
+
+You can get the DNA names that define the four tables like this:
+```{r}
+DNA <- names(raw_weight) %>% str_remove("\\.\\D+") %>% unique()
+```
+
+The `\\.\\D+` is a regex pattern representing a period followed by anything that is not number.
+
+Now let's extract the part of the table that contains the first of these tables, defined by `152F7`. You can use the `contains`  helper function in call to `select` like this:
+
+```{r}
+s <- DNA[2]
+raw_weight %>% select(contains(s))
+```
+
+To remove the rows with NAs with can use the `drop_na` function from the __tidyr__ package. 
+
+```{r}
+weight <- raw_weight %>% 
+  select(contains("152F7")) %>% 
+  drop_na()
+```
+
+Now add a `DNA` column with the DNA fragment name.
+
+```{r}
+
+```
+
+We are close to having one of the tables that we want to bind. A remaining problem is that the variable names all contain `152F7.` and we want to remove that. We can achieve this using 
+
+```{r}
+weight <- raw_weight %>% select(contains(s)) %>% 
+  setNames(str_remove(names(.), ".*\\."))
+```
+
+The regex `.*\\.` means anything following by a dot.
+
+Now you should have line of code that for any given DNA fragment name `s` can create the appropriate table. Use the `lapply` function to do this for each of the fragment names and store in a list called `tmp`
+
+```{r}
+
+```
+
+Finally, use the function `do.call` to apply the `bind_rows` function to the elements of the list to form a final table. Call the table `weight`
+
+```{r}
+
+```
+
+So now we have the weight data. The last step is to add the blood pressure data. We can use `inner_join` to do this. However the mouse IDs are spread across 3 different columns:
+
+```{r}
+raw_bp %>% head()
+```
+
+You can use the `unite` function to do this. Like this:
+
+```{r}
+bp <- raw_bp %>% unite(line, contains("line"), sep="-")
+```
+
+Note that we are not finished. We need to add a `#` to the IDs. Do this using `mutate` and the `paste0` function:
+
+```{r}
+
+```
+
+
+Now use `inner_join` to create the final table. Call it `new_dat`
+
+```{r}
+
+```
+
+Now let's compare it to our tidy data 
+```{r}
+load("../rdas/mouse.rda")
+dat <- mutate(dat, DNA = recode(DNA, 
+                                "1"="141G6", 
+                                "2"="152F7", 
+                                "3"="230E8", 
+                                "4"="285E6"))
+```
+
+
+Use the `set_diff` function to see if the tables match.
+
+```{r}
+
+```
+
