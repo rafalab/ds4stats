@@ -11,11 +11,9 @@ knitr::opts_chunk$set(
 )
 ```
 
-We will be using the `tidyverse` in this lab. So let's start by loading it.
+Read [this chapter](https://rafalab.github.io/dsbook/caret.html) on the __caret__ package. 
 
-```{r}
-library(tidyverse)
-```
+## Two digit example
 
 Load the two digit example data
 
@@ -25,3 +23,22 @@ data("mnist_27")
 ```
 
 Build a prediction algorithm on the train set and test on the test set.
+
+Hints: 
+
+* Try out one of the models described [here](https://topepo.github.io/caret/available-models.html).
+* Learn to use the `train` function and the `tuneGrid` argument.
+
+## Full MNIST example
+
+Load the two digit example data
+
+```{r}
+mnist < read_mnist()
+```
+
+Build a prediction algorithm on the train set and test on the test set.
+Hint: Learn to use the `trainControl` function so you can implement less computationally intensive cross validation options.
+
+
+
