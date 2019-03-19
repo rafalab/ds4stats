@@ -1,26 +1,17 @@
-# ds4stats
+# Data Science for Statisticians Workshop
 
-Getting started - 
+This repo contains:
 
-file system - home directory, full paths, relative paths
-GitHub
-RStudio
-Rmd
-command + return or control + enter
-for chunks: command shift return or control enter return 
-knitr button
+* the lectures in R markdown and html,
+* the labs
+* the solutions in R markdown and markdown that renders in Github
+* the data and rdas
 
-Introduction to dplyr - slide show 
+The lectures are the following:
 
-lab 1 
-
-Data visualization principles - slide show
-
-Introduction to ggplot2 - slide show
-
-lab 2
-
-Data wrangling: joins, gather,
-
-lab 3
-
+* [Getting started](https://rafalab.github.io/ds4stats/html/00-getting-started.html)
+* [Introduction to the tidyverse](https://rafalab.github.io/ds4stats/html/01-intro-to-tidyverse.html)
+* [Data Visualization Principles](https://rafalab.github.io/ds4stats/html/02-A-dataviz-principles.html)
+* [Introduction to ggplot2](https://rafalab.github.io/ds4stats/html/02-B-ggplot2.html)
+* [Data Wrangling](https://rafalab.github.io/ds4stats/html/03-wrangling.html)
+* [Brief Introduction to Machine Learning](https://rafalab.github.io/ds4stats/html/04-intro-to-machine-learning.html)
