@@ -15,3 +15,5 @@ The lectures are the following:
 * [Introduction to ggplot2](https://rafalab.github.io/ds4stats/html/02-B-ggplot2.html)
 * [Data Wrangling](https://rafalab.github.io/ds4stats/html/03-wrangling.html)
 * [Brief Introduction to Machine Learning](https://rafalab.github.io/ds4stats/html/04-intro-to-machine-learning.html)
+
+Prerequisites: Basic knowledge of R. For example, you should know how to define a numeric vector, how to access to elements of data frame, and how to write a function.
