@@ -3,12 +3,12 @@ title: "Brief Introduction to Machine Learning"
 author: "Rafael A. Irizarry"
 date: "17-3-7"
 output:
+  slidy_presentation: default
+  beamer_presentation: default
   ioslides_presentation:
     fig_caption: no
     fig_height: 4
     fig_width: 7
-  beamer_presentation: default
-  slidy_presentation: default
 ---
 
 ```{r, echo=FALSE, warning=FALSE, message=FALSE}
@@ -160,7 +160,7 @@ x <- heights$height
 
 - This is clearly a categorical outcome since $Y$ can be `Male` or `Female` and we only have one predictor: height.
 
-- Can we do better than guessing? To answer this question we need to quantitative definition of **better**. 
+- Can we do better than guessing? To answer this question we need a quantitative definition of **better**. 
 
 ## Training and test sets
 
@@ -257,7 +257,7 @@ best_cutoff
 
 ## Overall accuracy
 
-- Now we can now test this cutoff on our test set to make sure our accuracy is not overly optimistic:
+- We can now test this cutoff on our test set to make sure our accuracy is not overly optimistic:
 
 
 ```{r}
@@ -280,6 +280,8 @@ mean(y_hat == test_set$sex)
 - Generally speaking, overall accuracy can be a deceptive measure.
 
 - To see this we will start by constructing what is referred to as the _confusion matrix_, which basically tabulates each combination of prediction and actual value.
+
+- Note: statisticians call this a _contingency table_
 
 - We can do this in R using the function `table`:
 
@@ -323,8 +325,8 @@ as.data.frame(mat) %>% knitr::kable()
 | A measure of | Name 1 | Name 2 | Definition | Probability representation |
 |------|:--------------:|:------:|:----------:|:--------------------------:|
 Sensitivity | True positive rate (TPR) | Recall | $TP / (TP + FN)$ | $\mbox{Pr}(\hat{Y}=1 \mid Y=1)$ |
-Specificity | True negative rate (TNR) | 1 minus false positive rate (1-FPR) | $TN / (TN+FP)$ | $\mbox{Pr}(\hat{Y}=0 \mid Y=0)$ |
-Specificity | Positive Predictive value (PPV) | Precision | $TP / (TP+FP)$ | $\mbox{Pr}(Y=1 \mid \hat{Y}=1)$|
+Specificity | True negative rate (TNR) |1-FPR | $TN / (TN+FP)$ | $\mbox{Pr}(\hat{Y}=0 \mid Y=0)$ |
+Specificity | Positive Predictive value | Precision | $TP / (TP+FP)$ | $\mbox{Pr}(Y=1 \mid \hat{Y}=1)$|
 
 ## Sensitivity and Specificity 
 
@@ -425,7 +427,26 @@ map_df(cutoffs, function(x){
 cutoffs <- c(50, seq(55, 75), 80)
 probs <- seq(0.05, .95, length.out = 50)
 guessing <- map_df(probs, function(p){
-  y_hat <- sample(c("Male", "Female"), length(test_index), replace = TRUE, prob=c(p, 1-p)) %>% 
+  y_hat <- sample(c("Male", "Female"), length(test_index), 
+                  replace = TRUE, prob=c(p, 1-p)) %>% 
+    factor(levels = c("Female", "Male"))
+  list(method = "Guess",
+    recall = sensitivity(y_hat, test_set$sex),
+    precision = precision(y_hat, test_set$sex))
+})
+
+height_cutoff <- map_df(cutoffs, function(x){
+  y_hat <- ifelse(test_set$height > x, "Male", "Female") %>% 
+    factor(levels = c("Female", "Male"))
+  list(method = "Height cutoff",
+       recall = sensitivity(y_hat, test_set$sex),
+    precision = precision(y_hat, test_set$sex))
+})
+tmp_1 <- bind_rows(guessing, height_cutoff) %>% mutate(Positive = "Y = 1 if Female") 
+
+guessing <- map_df(probs, function(p){
+  y_hat <- sample(c("Male", "Female"), length(test_index), replace = TRUE, 
+                  prob=c(p, 1-p)) %>% 
     factor(levels = c("Male", "Female"))
   list(method = "Guess",
     recall = sensitivity(y_hat, relevel(test_set$sex, "Male", "Female")),
@@ -439,10 +460,13 @@ height_cutoff <- map_df(cutoffs, function(x){
        recall = sensitivity(y_hat, relevel(test_set$sex, "Male", "Female")),
     precision = precision(y_hat, relevel(test_set$sex, "Male", "Female")))
 })
-bind_rows(guessing, height_cutoff) %>%
+tmp_2 <- bind_rows(guessing, height_cutoff) %>% mutate(Positive = "Y = 1 if Male") 
+
+bind_rows(tmp_1, tmp_2) %>%
   ggplot(aes(recall, precision, color = method)) +
   geom_line() +
-  geom_point()
+  geom_point() +
+  facet_wrap(~ Positive)
 ```
 
 ## Case study: a bit more realistic
